@@ -56,9 +56,13 @@ core/
 adapters/
   claude/SKILL.md        Claude Code 진입점 (~/.claude/skills/migrate/)
   codex/SKILL.md         Codex CLI 진입점 (~/.codex/skills/migrate/, 동일 SKILL.md 포맷)
-  cursor/migrate.md      Cursor 진입점 (.cursor/commands/, 구현 단계에서 포맷 확인)
-  grok/runbook.md        Grok 진입점 (명령 시스템 확인 후 스킬 또는 붙여넣기 runbook)
+  cursor/SKILL.md        Cursor 진입점 (~/.cursor/skills/migrate/, 동일 SKILL.md 포맷. IDE 채팅·CLI 양쪽에서 동작 확인됨)
+  grok/SKILL.md          Grok Build 진입점 (~/.grok/skills/migrate/, 동일 SKILL.md 포맷)
+  runbook.md             스킬 시스템 없는 도구용 폴백 (채팅에 붙여넣는 실행 프롬프트)
 ```
+
+리서치 결과 4개 도구 전부 같은 `SKILL.md` 포맷(agent-skills 표준)을 지원한다.
+진입점 4개는 사실상 같은 파일이고 설치 경로만 다르다.
 
 - 매핑표는 방향별(N×N)로 만들지 않는다. 도구 문서가 자기 설정 표면의 읽기/쓰기 규칙을 기술하고, AI가 소스 문서와 목적지 문서를 조합해 변환한다. 도구 4개 = 문서 4개로 12방향 커버.
 - 파서·변환 코드는 두지 않는다. AI가 지식 문서를 읽고 직접 변환한다.
@@ -91,7 +95,51 @@ adapters/
 | `[projects] trust_level` | 해당 없음 | — | 리포트에 안내만 |
 | model·personality·auth.json·세션·캐시 | 이관 안 함 | — | 리포트에 안내만 |
 
-Cursor·Grok의 설정 표면은 구현 단계에서 리서치 후 각 도구 문서에 동일 형식으로 작성한다. Grok CLI는 설정 표면이 덜 표준화되어 있어 커버 범위가 좁으면 리포트에 명시한다.
+## Cursor 설정 표면 (리서치 검증 완료, 2026-08-20)
+
+공식 문서 + 이 머신의 실제 `~/.cursor`로 검증.
+
+| 카테고리 | Cursor 위치 | 비고 |
+|---|---|---|
+| 규칙 | `.cursor/rules/*.mdc` (frontmatter: description/globs/alwaysApply), 레거시 `.cursorrules` | AGENTS.md·CLAUDE.md도 네이티브로 읽음 |
+| User Rules (전역) | Cursor 계정에 동기화 (파일 아님, state.vscdb) | 파일 이관 불가 → 수동 안내 |
+| MCP | `~/.cursor/mcp.json`, `.cursor/mcp.json` — mcpServers 맵 (stdio: command/args/env/envFile, remote: url/headers/auth) | 서버 이름에 공백 허용 |
+| 커맨드 | `.cursor/commands/*.md`, `~/.cursor/commands/` | 평문 markdown |
+| 스킬 | `~/.cursor/skills/`, `.cursor/skills/` — SKILL.md 표준 | `.claude/skills/`·`.codex/skills/`도 호환 로드함. `skills-cursor/`는 앱 관리 내장분 — 이관 금지 |
+| 서브에이전트 | `~/.cursor/agents/*.md`, `.cursor/agents/` | Claude agents/*.md와 1:1 |
+| 훅 | `hooks.json` (version:1, camelCase 이벤트, 평면 배열) | Claude 스키마와 다름. 단 Cursor가 `.claude/settings.json` 훅을 자동 매핑해 읽음 |
+| 권한 | `cli-config.json` — permissions.allow/deny(`Shell(ls)` 문법), approvalMode, sandbox | Claude permissions와 근사 매핑 |
+| GUI 전용 | Memories, Team Rules, 커스텀 모드 | 이관 불가 → 수동 안내 |
+
+## Grok 설정 표면 (리서치 검증 완료, 2026-08-20)
+
+대상은 xAI 공식 **Grok Build** (`grok`, github.com/xai-org/grok-build — 공식·지배적).
+커뮤니티 superagent grok-cli는 보조 문서로만 다루고 진입점은 runbook 폴백.
+
+| 카테고리 | Grok Build 위치 | 비고 |
+|---|---|---|
+| 규칙 | `~/.grok/rules/*.md` (전역 디렉토리), AGENTS.md·CLAUDE.md 네이티브 읽기 | GROK.md는 안 읽음 — 이관 타겟은 AGENTS.md |
+| MCP | `~/.grok/config.toml`, `.grok/config.toml`의 `[mcp_servers.*]` TOML | Codex와 같은 TOML 모양. `.claude.json`·`.cursor/mcp.json`·`.mcp.json`도 호환 읽기 |
+| 스킬/커맨드 | `~/.grok/skills/`, `.grok/skills/` — SKILL.md 표준, user-invocable이면 슬래시 명령 | `/migrate` 진입점 가능 확인 |
+| 서브에이전트 | `~/.grok/agents/`, `.grok/agents/` | |
+| 훅 | `~/.grok/hooks/*.json`, config.toml 인라인 — PascalCase 이벤트, Claude와 동일 JSON 구조 | 이벤트 15개, Claude와 대부분 동명 |
+| 모델/인증 | config.toml `[models]`, `auth.json` (자동 관리) | 이관 안 함 |
+
+## 훅 이벤트 매핑 (검증 완료)
+
+- Codex 11개 이벤트(SessionStart/End, SubagentStart/Stop, PreToolUse, PermissionRequest, PostToolUse, Pre/PostCompact, UserPromptSubmit, Stop)는 Claude에 전부 동명 존재 — 무변환.
+- Claude 전용 이벤트 약 20개(Notification, ConfigChange, WorktreeCreate 등)는 Codex에 등가물 없음 — 경고 후 드롭.
+- 도구명 매처는 변환 필요: Codex `apply_patch` ↔ Claude `Edit|Write`, Codex에 Read/Grep/Glob 없음.
+- Claude의 비-command 훅 타입(http/mcp_tool/prompt/agent)은 타 도구 미지원 — 스킵.
+- Cursor 훅은 camelCase + 평면 구조라 이벤트명·구조 양쪽 변환 필요.
+
+## 배포 (리서치 반영)
+
+- Claude 플러그인 형식(`.claude-plugin/plugin.json` + marketplace.json)으로 패키징하면 **Codex가 Claude 마켓플레이스를 무변환으로 직접 설치**함(이 머신에서 실증). 패키지 하나로 Claude·Codex 배포 커버.
+- Cursor·Grok은 저장소 설치 스크립트(스킬 디렉토리 복사)로 배포.
+- Codex `/import`의 세션 dedupe 원장(`content_sha256` 기록) 패턴을 재실행 안전성에 차용.
+
+원본 리서치 전문: `docs/research/*.json`.
 
 ## 안전 정책
 
@@ -111,6 +159,6 @@ Cursor·Grok의 설정 표면은 구현 단계에서 리서치 후 각 도구 �
 
 1. **코어 + Codex→Claude**: `core/procedure.md`, `core/security.md`, `core/tools/codex.md`, `core/tools/claude.md`, Claude 진입점. 빈 방향(into-Claude)을 end-to-end로 먼저 완성하고 검증.
 2. **Claude→Codex**: Codex 진입점 추가. 새 지식 문서 없이 기존 문서 재사용으로 역방향이 동작하는지 검증 — any→any 구조 증명.
-3. **Cursor 편입**: `core/tools/cursor.md` 리서치·작성 + Cursor 진입점. Cursor↔Claude, Cursor↔Codex 검증.
-4. **Grok 편입**: `core/tools/grok.md` 리서치·작성 + Grok 진입점(스킬 또는 runbook).
+3. **Cursor 편입**: `core/tools/cursor.md` 작성(리서치 완료분 반영) + Cursor 진입점. Cursor↔Claude, Cursor↔Codex 검증.
+4. **Grok 편입**: `core/tools/grok.md` 작성(Grok Build 기준) + Grok 진입점 스킬. 커뮤니티 grok-cli는 runbook 폴백만.
 5. **마감**: 자동 감지 모드, 플러그인 패키징, 설치 스크립트.
