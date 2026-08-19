@@ -104,12 +104,15 @@ adapters/
 | 규칙 | `.cursor/rules/*.mdc` (frontmatter: description/globs/alwaysApply), 레거시 `.cursorrules` | AGENTS.md·CLAUDE.md도 네이티브로 읽음 |
 | User Rules (전역) | Cursor 계정에 동기화 (파일 아님, state.vscdb) | 파일 이관 불가 → 수동 안내 |
 | MCP | `~/.cursor/mcp.json`, `.cursor/mcp.json` — mcpServers 맵 (stdio: command/args/env/envFile, remote: url/headers/auth) | 서버 이름에 공백 허용 |
-| 커맨드 | `.cursor/commands/*.md`, `~/.cursor/commands/` | 평문 markdown |
-| 스킬 | `~/.cursor/skills/`, `.cursor/skills/` — SKILL.md 표준 | `.claude/skills/`·`.codex/skills/`도 호환 로드함. `skills-cursor/`는 앱 관리 내장분 — 이관 금지 |
-| 서브에이전트 | `~/.cursor/agents/*.md`, `.cursor/agents/` | Claude agents/*.md와 1:1 |
-| 훅 | `hooks.json` (version:1, camelCase 이벤트, 평면 배열) | Claude 스키마와 다름. 단 Cursor가 `.claude/settings.json` 훅을 자동 매핑해 읽음 |
-| 권한 | `cli-config.json` — permissions.allow/deny(`Shell(ls)` 문법), approvalMode, sandbox | Claude permissions와 근사 매핑 |
-| GUI 전용 | Memories, Team Rules, 커스텀 모드 | 이관 불가 → 수동 안내 |
+| 커맨드 | `.cursor/commands/*.md` (문서 삭제됨, deprecated) | Cursor 2.4부터 스킬로 대체 (`/migrate-to-skills`) — 이관 타겟은 스킬 |
+| 스킬 | `~/.cursor/skills/`, `.cursor/skills/` — SKILL.md 표준 (frontmatter: name·description·paths·disable-model-invocation·metadata) | `.claude/skills/`·`.codex/skills/`도 호환 로드함. `$ARGUMENTS` 치환 없음 — 진입점 스킬은 인자를 메시지 본문에서 읽도록 작성. `skills-cursor/`는 앱 관리 내장분 — 이관 금지 |
+| 서브에이전트 | `~/.cursor/agents/*.md`, `.cursor/agents/` — frontmatter: name·description·model·readonly·is_background | `.claude/agents/`·`.codex/agents/`도 호환 로드. Claude 전용 필드(tools·color)는 드롭 |
+| 훅 | `hooks.json` (version:1, camelCase 이벤트, 평면 배열) | Claude 훅 호환 레이어 있음: "Third-party" 설정 켜면 `.claude/settings.json` 훅 8종 자동 매핑 (Notification·PermissionRequest 미지원, Glob·WebFetch 매처 미지원) |
+| 권한 | `cli-config.json` permissions.allow/deny — 토큰 5종: `Shell(cmd)`, `Read(glob)`, `Write(glob)`, `WebFetch(domain)`, `Mcp(server:tool)`. 인자 매칭은 콜론 문법 `curl:*` | Claude와 근사 매핑 (Edit→Write 병합). approvalMode: allowlist/auto-review/unrestricted |
+| env 주입 | 전역 env 표면 없음 (mcp.json per-server env/envFile + `${env:NAME}` 보간만) | Claude settings.json env는 이관 불가 → 수동 안내 |
+| GUI 전용 | User Rules(계정 동기화), Memories, Team Rules | 이관 불가 → 수동 안내 |
+
+`.cursor/rules`의 평문 `.md`는 무시됨(`.mdc`+frontmatter 필수) — 규칙 착지는 AGENTS.md 권장(공식 문서 명시).
 
 ## Grok 설정 표면 (리서치 검증 완료, 2026-08-20)
 
@@ -118,26 +121,46 @@ adapters/
 
 | 카테고리 | Grok Build 위치 | 비고 |
 |---|---|---|
-| 규칙 | `~/.grok/rules/*.md` (전역 디렉토리), AGENTS.md·CLAUDE.md 네이티브 읽기 | GROK.md는 안 읽음 — 이관 타겟은 AGENTS.md |
+| 규칙 | `~/.grok/rules/*.md` (임의 조각·단일 파일 모두 허용), `~/.grok/AGENTS.md`도 지원. AGENTS.md·CLAUDE.md 네이티브 읽기 | GROK.md는 안 읽음. `[compat.claude/cursor] rules`로 `.claude/rules/`·`.cursor/rules/`도 읽음 |
 | MCP | `~/.grok/config.toml`, `.grok/config.toml`의 `[mcp_servers.*]` TOML | Codex와 같은 TOML 모양. `.claude.json`·`.cursor/mcp.json`·`.mcp.json`도 호환 읽기 |
-| 스킬/커맨드 | `~/.grok/skills/`, `.grok/skills/` — SKILL.md 표준, user-invocable이면 슬래시 명령 | `/migrate` 진입점 가능 확인 |
-| 서브에이전트 | `~/.grok/agents/`, `.grok/agents/` | |
-| 훅 | `~/.grok/hooks/*.json`, config.toml 인라인 — PascalCase 이벤트, Claude와 동일 JSON 구조 | 이벤트 15개, Claude와 대부분 동명 |
-| 모델/인증 | config.toml `[models]`, `auth.json` (자동 관리) | 이관 안 함 |
+| 스킬/커맨드 | `~/.grok/skills/`, `.grok/skills/` — SKILL.md 표준, user-invocable이면 슬래시 명령 | `/migrate` 진입점 가능 확인. `~/.grok/workflows/*.rhai`는 별도 워크플로 표면(이관 비대상) |
+| 서브에이전트 | `~/.grok/agents/*.md`, `.grok/agents/` — YAML frontmatter camelCase (name·description·promptMode·tools·model·effort·maxTurns 등) | `.claude/agents/`도 호환 로드. Claude *.md와 필드명 케이스만 변환 |
+| 훅 | `~/.grok/hooks/*.json`, config.toml 인라인 — PascalCase 이벤트 15개, Claude와 동일 JSON 구조 | `~/.claude/settings.json` 훅도 compat으로 직접 읽음 |
+| 권한 | `[permission]` — 구조형 rules 또는 **Claude와 같은 문자열 문법** `Bash(git *)`·`Read(src/**)`·`WebFetch(domain:...)` (allow/ask/deny) | `.claude/settings.json`의 permissions.allow/deny/ask + defaultMode를 네이티브로 읽음 — 사실상 무변환 |
+| env 주입 | `[shell_environment_policy]` — Codex와 동일한 테이블명·구조 (`set` 포함) | Codex↔Grok은 복사 수준 |
+| 메모리 | `~/.grok/memory/MEMORY.md` (평문 markdown, 실험 기능) | 파일 복사로 이관 가능 — 선택 항목 |
+| 모델/인증/샌드박스 | config.toml `[models]`, `auth.json`, `sandbox.toml` | 이관 안 함 (샌드박스는 근사 안내만) |
 
 ## 훅 이벤트 매핑 (검증 완료)
 
 - Codex 11개 이벤트(SessionStart/End, SubagentStart/Stop, PreToolUse, PermissionRequest, PostToolUse, Pre/PostCompact, UserPromptSubmit, Stop)는 Claude에 전부 동명 존재 — 무변환.
-- Claude 전용 이벤트 약 20개(Notification, ConfigChange, WorktreeCreate 등)는 Codex에 등가물 없음 — 경고 후 드롭.
+- Claude 전용 이벤트 약 20개(Notification, ConfigChange, WorktreeCreate 등)는 Codex에 등가물 없음 — 경고 후 드롭. Codex는 hooks 객체 안의 미지 이벤트명을 조용히 무시함(소스 검증) — 단 최상위 키 오류는 파일 전체 스킵이라 구조는 정확히 써야 함.
+- Codex PostToolUse는 명령 실패 시에도 발화(공식 문서) — Claude PostToolUseFailure 핸들러는 PostToolUse로 병합 가능.
 - 도구명 매처는 변환 필요: Codex `apply_patch` ↔ Claude `Edit|Write`, Codex에 Read/Grep/Glob 없음.
 - Claude의 비-command 훅 타입(http/mcp_tool/prompt/agent)은 타 도구 미지원 — 스킵.
-- Cursor 훅은 camelCase + 평면 구조라 이벤트명·구조 양쪽 변환 필요.
+- Cursor 훅은 camelCase + 평면 구조라 이벤트명·구조 양쪽 변환 필요. 단 Claude→Cursor는 호환 레이어(8종 자동 매핑)가 있어 "Claude 훅을 그대로 두고 Third-party 설정 안내" 전략도 가능 — 기본은 네이티브 변환, 호환 레이어는 리포트에 대안으로 안내.
+
+## 권한(permissions) 매핑 (검증 완료)
+
+- **Claude↔Grok Build**: 사실상 무변환. Grok이 Claude 문자열 문법(`Bash(...)`, `Read(...)`)과 `.claude/settings.json` 자체를 네이티브로 읽음.
+- **Claude↔Cursor**: 토큰 이름 변환 (`Bash`↔`Shell`, `Edit/Write`→`Write`, `mcp__s__t`↔`Mcp(s:t)`), 인자 문법 변환 (`cmd:*` 콜론 형식). deny 우선 규칙은 동일.
+- **Claude↔Codex**: Codex rules DSL은 Starlark `prefix_rule`, 결정 3종(allow/prompt/forbidden ↔ Claude allow/ask/deny). 단 **Bash argv-prefix 규칙만** 표현 가능 — 와일드카드·Read/Edit 경로·WebFetch 도메인·MCP 규칙은 변환 불가 → 수동 목록으로 리포트.
+- 모드 매핑: Claude `defaultMode` ↔ Cursor `approvalMode`(allowlist/auto-review/unrestricted) ↔ Codex `approval_policy`+`sandbox_mode` ↔ Grok `[ui] permission_mode` — 근사 매핑표를 core/procedure.md에 수록, 자동 적용 대신 제안.
 
 ## 배포 (리서치 반영)
 
 - Claude 플러그인 형식(`.claude-plugin/plugin.json` + marketplace.json)으로 패키징하면 **Codex가 Claude 마켓플레이스를 무변환으로 직접 설치**함(이 머신에서 실증). 패키지 하나로 Claude·Codex 배포 커버.
 - Cursor·Grok은 저장소 설치 스크립트(스킬 디렉토리 복사)로 배포.
 - Codex `/import`의 세션 dedupe 원장(`content_sha256` 기록) 패턴을 재실행 안전성에 차용.
+
+커뮤니티 grok-cli(superagent) 보조 사실: 설정은 `~/.grok/user-settings.json`이 유일한 읽기·쓰기 경로(README의 `.grok/settings.json mcpServers` 표기는 오류 — 소스 검증). 훅 17종, 매처는 정확 문자열 일치만. 커스텀 슬래시 명령 불가 → runbook 폴백.
+
+## 구현 중 실측 항목 (문서로 판정 불가)
+
+- Cursor: `.cursor/commands/*.md`가 현 빌드에서 아직 로드되는지, 진입점 스킬의 인자 전달 실동작, `sandbox.mode` 유효값.
+- Codex: 미지 훅 이벤트 무시가 릴리스 빌드에서도 동일한지, MCP 도구 실패 시 PostToolUse 발화 여부, `/import` 세부 규칙 대조(fixture로).
+- Grok Build: 설치 필요(이 머신에 없음). Claude settings.json `env` 블록 호환 여부, `[ui] permission_mode` 전체 유효값, 사용자 agents frontmatter 필드별 실효성.
+- 실측은 전부 임시 홈(`CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `GROK_HOME`)에서 수행 — 실제 설정 디렉토리 변경 금지.
 
 원본 리서치 전문: `docs/research/*.json`.
 
