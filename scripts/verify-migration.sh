@@ -18,38 +18,10 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 mcp_json="$(mktemp)"
 trap 'rm -f "$mcp_json"' EXIT
-python3 -c "
-import json, shlex, sys, pathlib
-try:
-    text = pathlib.Path(sys.argv[1]).read_text()
-except OSError:
-    print(\"[]\")
-    raise SystemExit
-text = text.replace(\"\\\\\\n\", \" \")
-seps = {\";\", \"&&\", \"||\", \"|\", \"&\", \"(\", \")\"}
-out = []
-for raw in text.splitlines():
-    lex = shlex.shlex(raw, posix=True, punctuation_chars=True)
-    lex.whitespace_split = True
-    lex.commenters = \"#\"
-    try:
-        toks = list(lex)
-    except ValueError:
-        toks = []
-    cur = []
-    for t in toks:
-        if t in seps:
-            if cur:
-                out.append(cur)
-            cur = []
-        else:
-            cur.append(t)
-    if cur:
-        out.append(cur)
-print(json.dumps(out))
-" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
+python3 "$script_dir/parse-mcp-commands.py" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
@@ -110,15 +82,15 @@ chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|d
 
 # MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
-chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
-chk "mcp add: everything env"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
-chk "mcp add: everything separator"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
-chk "mcp add: everything package arg"  jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
-chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc"))' "$mcp_json"
-chk "mcp add: secretsvc http"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
-chk "mcp add: secretsvc url"           jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
-chk_not "disabled server not added"    jq -e 'any(.[]; any(.[]; .=="disabled_one"))' "$mcp_json"
+chk "mcp add: two servers registered"  jq -e 'length >= 2' "$mcp_json"
+chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$mcp_json"
+chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
+chk "mcp add: everything command"      jq -e 'any(.[]; .name=="everything" and .cmd[0]=="npx")' "$mcp_json"
+chk "mcp add: everything package arg"  jq -e 'any(.[]; .name=="everything" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mcp_json"
+chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
+chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
