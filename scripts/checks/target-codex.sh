@@ -16,13 +16,7 @@ codex_add_exit_trap() {
 }
 
 codex_toml_to_json() {
-  python3 -c "
-import sys, tomllib, json, pathlib
-try:
-    print(json.dumps(tomllib.loads(pathlib.Path(sys.argv[1]).read_text())))
-except Exception:
-    print('{}')
-" "$1" 2>/dev/null
+  python3 "$script_dir/toml-to-json.py" "$1" 2>/dev/null || printf '{}'
 }
 
 codex_toml_json="$(mktemp)"
@@ -43,7 +37,7 @@ chk "AGENTS.md migrated rule 2"        grep -qF "Never commit secrets." "$TARGET
 chk "AGENTS.md preserves import line"  grep -qF "@~/.agent-rules-fixture.md" "$TARGET/AGENTS.md"
 
 # config.toml — 파싱 가능성 + 기존 최상위 값 보존
-chk "config.toml parses as TOML"       python3 -c "import tomllib, pathlib, sys; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())" "$TARGET/config.toml"
+chk "config.toml parses as TOML"       python3 "$script_dir/toml-to-json.py" "$TARGET/config.toml"
 chk "existing model preserved"         jq -e '.model == "gpt-5.6-sol"' "$codex_toml_json"
 chk "existing env key preserved"       jq -e '.shell_environment_policy.set.EXISTING_KEY == "keep"' "$codex_toml_json"
 
@@ -65,7 +59,9 @@ chk "hooks.json valid JSON"            jq -e . "$TARGET/hooks.json"
 chk "hooks.json top-level shape"       jq -e 'keys == ["hooks"]' "$TARGET/hooks.json"
 chk "hook matcher converted to apply_patch" jq -e '.hooks.PreToolUse | map(select(.matcher == "apply_patch")) | length >= 1' "$TARGET/hooks.json"
 chk "hook body paired with matcher"    jq -e '.hooks.PreToolUse | map(select(.matcher == "apply_patch")) | .[0].hooks | map(select(.command == "echo pre-edit-check" and .timeout == 10)) | length >= 1' "$TARGET/hooks.json"
-chk "notification hook migrated"       jq -e '[.hooks.Notification[].hooks[].command] | index("echo notify") != null' "$TARGET/hooks.json"
+# Notification 은 Codex 공식 11개 이벤트에 없다 — Codex 가 조용히 무시하는 죽은 설정이
+# 되므로 이관하지 않고 드롭한 뒤 리포트에 기록해야 한다(core/tools/codex.md 쓰기 규칙).
+chk_not "notification event dropped"   jq -e '.hooks.Notification' "$TARGET/hooks.json"
 
 # hooks.json — Claude 전용 이벤트(ConfigChange)는 조용히 드롭, 어디에도 남으면 안 됨
 chk_not "ConfigChange dropped from hooks.json" grep -qF "ConfigChange" "$TARGET/hooks.json"
@@ -89,7 +85,7 @@ chk "skill supporting file content"    grep -qF "Keep the greeting under two sen
 
 # 서브에이전트 (md -> TOML)
 chk "agent converted to toml"          test -f "$TARGET/agents/reviewer.toml"
-chk "agent toml parses"                python3 -c "import tomllib, pathlib, sys; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())" "$TARGET/agents/reviewer.toml"
+chk "agent toml parses"                python3 "$script_dir/toml-to-json.py" "$TARGET/agents/reviewer.toml"
 chk "agent description carried"        jq -e '(.description // "") | contains("Reviews diffs for style violations")' "$codex_reviewer_toml_json"
 chk "agent developer_instructions carried" jq -e '(.developer_instructions // "") | contains("strict code reviewer")' "$codex_reviewer_toml_json"
 

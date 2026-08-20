@@ -60,10 +60,33 @@ description: <description 값>
 - `http_headers` 값은 security.md 시크릿 탐지 적용.
 - `enabled=false` 서버는 이관하지 않고 리포트에 기록.
 
-## 쓰기 규칙 (Codex가 타겟일 때 — Phase 2에서 사용)
+## 쓰기 규칙 (Codex가 타겟일 때)
 
-- 규칙 → `AGENTS.md`에 병합. MCP → `config.toml` `[mcp_servers.*]` TOML 추가.
-- 훅 → `hooks.json`. 최상위 구조는 반드시 `{"hooks": {...}}` — 최상위 키가 틀리면 파일 전체가 무시된다. hooks 객체 안의 미지 이벤트명은 조용히 무시되므로 Claude 전용 이벤트는 경고 후 제거.
-- Claude 권한 중 Bash prefix 규칙만 `rules/*.rules`로 변환 가능. 경로·도메인·MCP 규칙은 표현 불가 — 수동 목록으로.
-- PostToolUse는 실패 시에도 발화 — Claude `PostToolUseFailure` 훅은 PostToolUse로 병합.
-- `[shell_environment_policy.set]` ← Claude `env` 블록.
+| 카테고리 | 쓰기 위치 | 방법 |
+|---|---|---|
+| 전역 규칙 | `AGENTS.md` | 파일 끝에 `## Migrated from <source> (<date>)` 섹션으로 **원문 그대로** 병합(요약·재작성 금지). 소스와 기존 파일의 `@import` 줄 모두 원문 유지. 기존 내용 삭제 금지. 쓰기 전 원본을 `.migrate/<run-id>/backup/AGENTS.md` 로 복사. **주의: 타겟에 `AGENTS.override.md` 가 있으면 `AGENTS.md` 는 무시되므로**, 존재하면 병합을 멈추고 어느 파일에 쓸지 사용자에게 묻는다 |
+| MCP | `config.toml` `[mcp_servers.<name>]` | stdio: `command`/`args`/`env`(하위 테이블 `[mcp_servers.<name>.env]`). HTTP: `url` + 필요 시 `[mcp_servers.<name>.http_headers]`. `Bearer` 인증이 아닌 API-Key 계열 헤더는 `bearer_token_env_var` 가 아니라 `http_headers` 에 쓴다. 시크릿 값은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재. **동명 서버가 이미 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
+| 스킬 | `skills/<name>/` | 디렉토리째 복사(지원 파일 포함). 동명 스킬이 있으면 건너뛰고 리포트에 기록 |
+| 커맨드/프롬프트 | `prompts/<name>.md` | 평문 markdown 그대로. `$1`-`$9`/`$ARGUMENTS` 치환 토큰 원문 유지. Codex 는 이 표면을 deprecated 로 두고 스킬을 권장하므로, 이관은 하되 리포트에 "스킬로 옮기는 것을 권장" 안내를 남긴다 |
+| 서브에이전트 | `agents/<name>.toml` | 소스 파일명(또는 frontmatter `name`)이 **파일명**이 된다 — TOML 안에는 `name` 키를 쓰지 않는다. `description = "<소스 description>"`, `developer_instructions = '''<소스 본문>'''` |
+| 훅 | `hooks.json` | 최상위 구조는 반드시 `{"hooks": {...}}` — 최상위 키가 틀리면 파일 전체가 무시된다. 기존 배열에 append, 동일 command 는 스킵 |
+| 권한 | `rules/<name>.rules` | 아래 "권한 쓰기 문법" 참조 |
+| env 주입 | `config.toml` `[shell_environment_policy.set]` | 키 단위 병합, 기존 키 보존 |
+| 승인 정책 | — | `approval_policy`·`sandbox_mode` 를 **자동 설정하지 않는다.** 근사 매핑은 리포트 제안으로만 |
+
+### 훅 이벤트 변환 (다른 도구 → Codex)
+
+- Codex 공식 이벤트는 11개뿐이다: SessionStart, SessionEnd, SubagentStart, SubagentStop, PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, UserPromptSubmit, Stop.
+- **이 11개 밖의 이벤트는 전부 드롭하고 리포트에 기록한다.** Codex 가 조용히 무시해 죽은 설정이 되기 때문이다. Claude 의 `Notification`·`ConfigChange`·`PostToolUseFailure`·`WorktreeCreate` 등이 여기 해당한다.
+- 예외: `PostToolUseFailure` 는 Codex `PostToolUse` 가 실패 시에도 발화하므로 PostToolUse 로 병합할 수 있다.
+- 도구명 매처: Claude `Edit`·`Write` → `apply_patch`. Claude `Bash` → `Bash`(Codex 가 shell 계열을 이 이름으로 정규화한다). Claude 전용 도구(`Read`·`Grep`·`Glob`·`WebFetch`)는 Codex 에 1급 도구가 없어 죽은 패턴이 되므로 드롭 후 기록.
+- `command` 외 타입(http·mcp_tool·prompt·agent)은 Codex 미지원 — 스킵 후 기록.
+
+### 권한 쓰기 문법 (다른 도구 → Codex rules DSL)
+
+- 파일은 `rules/` 아래 아무 이름이나 가능하다(예: `rules/migrated.rules`). 문법은 Starlark 다.
+- 형식: `prefix_rule(pattern=["<토큰>", ...], decision="<결정>")` — **`decision` 값은 반드시 큰따옴표로 감싼 문자열이다.** 따옴표 없는 `decision=allow` 는 문법 오류다.
+- decision 매핑: allow→`"allow"`, ask→`"prompt"`, deny→`"forbidden"`.
+- 패턴 변환: `Bash(git status:*)` → `pattern=["git", "status"]`. 공백으로 토큰을 나누고 뒤의 `:*` 는 버린다.
+- 여러 규칙이 앞부분을 공유해도 묶지 말고 각각 한 줄씩 쓴다 — 위치별 union(`["build", "test"]`)은 읽기 전용 최적화이며 쓰기 시 사용하지 않는다.
+- **Bash prefix 규칙만 변환 가능하다.** 경로(`Read`/`Edit`)·도메인(`WebFetch`)·MCP 규칙, 그리고 중간 와일드카드가 필요한 패턴은 이 DSL 로 표현할 수 없다 — 변환하지 말고 수동 조치 목록에 원문 그대로 나열한다.
