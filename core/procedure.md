@@ -62,7 +62,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 �
 ## 이관하지 않음
 - <항목> (<소스 파일 경로>): <사유> (비활성 서버·키바인딩·세션·auth 등)
 
-각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다. 이관하지 않은 설정값(모델명 등)은 **현재 값을 그대로 인용**한다 — 범주만 적고 값을 생략하지 않는다. 승인/샌드박스 정책 제안에는 소스의 필드명(`approval_policy`, `sandbox_mode`)과 대응하는 타겟 개념명을 함께 적는다.
+각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다. 이관하지 않은 설정값(모델명 등)은 **현재 값을 그대로 인용**한다 — 범주만 적고 값을 생략하지 않는다. 승인/샌드박스 정책 제안에는 **소스 쪽 필드명과 현재 값**, 그리고 **타겟 쪽 대응 개념명과 제안 값**을 함께 적는다(예: Codex 는 `approval_policy`·`sandbox_mode`, Claude 는 `permissions.defaultMode`, Cursor 는 `approvalMode`, Grok 은 `[ui] permission_mode`). 어느 쪽이 소스인지에 따라 두 이름의 역할이 바뀐다.
 
 ## 검증
 - <실행한 확인 명령과 결과>
