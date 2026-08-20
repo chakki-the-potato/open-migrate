@@ -911,3 +911,11 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - `prompts/*.md` 의 `description`/`argument-hint` frontmatter 이관 경로 미검증.
 - `config.toml` 인라인 `[[hooks.Event]]` 훅 소스(두 번째 훅 위치) 미검증.
 - 공백·점 포함 MCP 서버명(`[mcp_servers."my server"]`) TOML quoting 경로 미검증.
+
+검증기 관련 (Task 2 리뷰 7라운드 누적, 전부 논블로킹):
+- `sessions` 카테고리 — 소스 픽스처에 대응 아티팩트가 없어 검증 자체가 불가능.
+- `auth` 의 리포트 명시 여부 — 시크릿 누출 체크로만 간접 보호됨.
+- permissions 리스트 완전성 — 알려진 5개 규칙의 배타적 배치는 증명되나, 근거 없는 추가 항목 부재는 미검증.
+- 원장 sha256 임계값 — `unique length >= 5` 만 요구, 파일별 정확 매핑까지는 미검증.
+- `VALUE_FLAGS` 미등록 플래그가 이름보다 앞에 올 때 이름 오인식 가능성(거짓 FAIL 방향).
+- 같은 줄에서 같은 플래그를 모순되게 중복 지정하는 경우(`--transport http --transport ftp`) — 검증기 내부 동작을 알아야 구성 가능한 입력이라 위협 모델 밖.
