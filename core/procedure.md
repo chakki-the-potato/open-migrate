@@ -45,7 +45,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 �
 
 ## Step 5: Report
 
-`.migrate/<run-id>/REPORT.md` 를 작성하고 같은 내용을 사용자에게 요약 출력한다. 형식:
+`.migrate/<run-id>/migration-report.md` 를 작성하고 같은 내용을 사용자에게 요약 출력한다. 형식:
 
 ```markdown
 # Migration Report: <source> → <target> (<run-id>)

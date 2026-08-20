@@ -15,7 +15,7 @@
 #                       .migrate/<run-id>/ 가 하나도 없으면 존재하지
 #                       않는 .migrate/__missing__/ 를 가리켜, 하위
 #                       체크들이 "파일 없음"으로 자연스럽게 FAIL 한다.
-#   is_noop_rerun       "1" | "0". 최신 run 의 REPORT.md 가 "이미
+#   is_noop_rerun       "1" | "0". 최신 run 의 migration-report.md 가 "이미
 #                       이관됨"을 기록한 정당한 no-op 재실행이면 "1" —
 #                       이때만 과거 run 의 산출물을 인정해도 된다.
 #                       "0" 이면 반드시 mig_dir 하나만 신뢰해서, 깨진
@@ -38,7 +38,7 @@ fi
 # 실행 단위 산출물(백업·MCP 명령)은 원칙적으로 최신 run 에서 찾는다.
 # 최신 run 이 원장 스킵으로 정당하게 아무것도 새로 만들지 않은 경우(리포트에 "이미 이관됨" 기록)에만
 # 과거 run 의 산출물을 인정한다 — 그렇지 않으면 깨진 최신 run 이 과거 흔적으로 위장 통과한다.
-if grep -q "이미 이관됨" "${mig_dir}REPORT.md" 2>/dev/null; then
+if grep -q "이미 이관됨" "${mig_dir}migration-report.md" 2>/dev/null; then
   is_noop_rerun=1
 else
   is_noop_rerun=0
@@ -57,7 +57,7 @@ find_run_artifact() {
 chk_not "AGENTS.override precedence"   grep -rqF "OVERRIDDEN-DECOY" "$TARGET"
 
 # 리포트 산출물 존재 (내용은 타겟별 체크가 검증한다)
-chk "report exists"                    test -f "${mig_dir}REPORT.md"
+chk "report exists"                    test -f "${mig_dir}migration-report.md"
 
 # 원장 (존재 + 유효 + sha256 기록)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
