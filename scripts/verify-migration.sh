@@ -112,12 +112,12 @@ chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|d
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
 chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
 chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
-chk "mcp add: everything env"          jq -e 'any(.[]; any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
-chk "mcp add: everything separator"    jq -e 'any(.[]; any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
-chk "mcp add: everything package arg"  jq -e 'any(.[]; any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: everything env"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
+chk "mcp add: everything separator"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
+chk "mcp add: everything package arg"  jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
 chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc"))' "$mcp_json"
-chk "mcp add: secretsvc http"          jq -e 'any(.[]; any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
-chk "mcp add: secretsvc url"           jq -e 'any(.[]; any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk "mcp add: secretsvc http"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
+chk "mcp add: secretsvc url"           jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
 chk_not "disabled server not added"    jq -e 'any(.[]; any(.[]; .=="disabled_one"))' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
