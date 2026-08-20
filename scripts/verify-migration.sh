@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # set -e 는 의도적으로 쓰지 않는다 — 개별 체크가 실패해도 전부 끝까지 돌려 한 번에 진단한다.
 set -uo pipefail
-TARGET="${1:?usage: verify-migration.sh <target-root> <target-tool>}"
-TOOL="${2:?usage: verify-migration.sh <target-root> <target-tool>}"
+TARGET="${1:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
+TOOL="${2:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
+SOURCE="${3:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
 fail=0
 
 chk() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "PASS: $d"; else echo "FAIL: $d"; fail=1; fi; }
@@ -10,8 +11,13 @@ chk_not() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "FAIL: $d"; 
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 tool_checks="$script_dir/checks/target-$TOOL.sh"
+source_checks="$script_dir/checks/source-$SOURCE.sh"
 if [ ! -f "$tool_checks" ]; then
   echo "ERROR: no checks for target tool '$TOOL' ($tool_checks)"
+  exit 1
+fi
+if [ ! -f "$source_checks" ]; then
+  echo "ERROR: no checks for source tool '$SOURCE' ($source_checks)"
   exit 1
 fi
 
@@ -22,5 +28,6 @@ fi
 
 . "$script_dir/checks/_common.sh"
 . "$tool_checks"
+. "$source_checks"
 
 exit $fail

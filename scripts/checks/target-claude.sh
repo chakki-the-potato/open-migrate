@@ -50,12 +50,8 @@ chk "agent frontmatter name"           grep -q "^name: reviewer" "$TARGET/agents
 chk "agent description carried"        grep -qF "Reviews diffs for style violations" "$TARGET/agents/reviewer.md"
 chk "agent body carried over"          grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
-# 리포트 — Codex -> Claude 특화 내용 (파일 자체 존재는 _common.sh 가 이미 검증)
-chk "report: keybindings non-migratable" grep -qi "keybinding" "${mig_dir}REPORT.md"
-chk "report: source model noted"       grep -qF "gpt-5.6-sol" "${mig_dir}REPORT.md"
-chk "report: disabled server noted"    grep -qF "disabled_one" "${mig_dir}REPORT.md"
-chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md"
-chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
+# 리포트 내용 중 소스 종속 문자열(예: Codex 모델명)은 source-<tool>.sh 로 옮겼다.
+# 여기 남은 건 리포트를 만들어내는 타겟 파서 산출물(mcp_json)에 의존하는 체크뿐이다.
 
 # MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
 # mcp-commands.sh 는 run 마다 누적/재생성될 수 있어(예: no-op run 도 감사 목적으로
@@ -81,6 +77,10 @@ chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mc
 chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
 chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
 chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http") and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
+# "disabled_one" 은 소스가 정한 값이지만, 이 체크는 mcp_json(타겟 파서 산출물) 없이는
+# 표현 자체가 불가능하다 — source-*.sh 로 옮기면 그 소스가 이 mcp_json 을 만들지 않는
+# target 과 짝지어질 때 set -u 미정의 변수로 죽는다. 나머지 mcp add: * 체크와 같은
+# 이유로 여기 남겨둔다.
 chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용) — 파일명은 Claude 전용, 조회 메커니즘은 _common.sh 의 find_run_artifact

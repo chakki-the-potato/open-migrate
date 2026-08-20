@@ -1,9 +1,16 @@
-# _common.sh — 타겟 툴에 무관한 검증(공통 체크) + run-directory 해석 메커니즘.
+# _common.sh — 타겟 툴에도 소스 툴에도 무관한 검증(공통 체크) + run-directory 해석 메커니즘.
 #
-# 소싱하는 쪽(verify-migration.sh)이 이미 정의해 둔 것: TARGET, TOOL,
+# 소싱하는 쪽(verify-migration.sh)이 이미 정의해 둔 것: TARGET, TOOL, SOURCE,
 # script_dir, chk/chk_not, fail. set -uo pipefail 도 이미 적용돼 있다.
+# 로드 순서는 _common.sh -> target-$TOOL.sh -> source-$SOURCE.sh 이므로,
+# source-<tool>.sh 는 target-<tool>.sh 가 만든 변수(예: mcp_json)까지도
+# 참조할 수는 있다 — 다만 그렇게 하면 그 source 파일은 "그 변수를 만드는
+# target 파일" 과 짝지어질 때만 안전해진다(다른 target 조합에서 set -u
+# 미정의 변수 에러로 죽는다). mig_dir 처럼 이 파일이 내보내는 변수만 쓰면
+# 어떤 target 과 조합해도 안전하다 — source-<tool>.sh 는 가능하면 이쪽만
+# 쓸 것.
 #
-# 이 파일이 target-<tool>.sh 를 위해 내보내는 것:
+# 이 파일이 target-<tool>.sh / source-<tool>.sh 를 위해 내보내는 것:
 #   mig_dir            최신 run 디렉터리 경로(trailing slash 포함).
 #                       .migrate/<run-id>/ 가 하나도 없으면 존재하지
 #                       않는 .migrate/__missing__/ 를 가리켜, 하위
