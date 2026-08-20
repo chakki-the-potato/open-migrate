@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "approvalMode": "allowlist",
+  "permissions": {
+    "allow": ["Shell(git status:*)", "Shell(npm run build:*)", "Shell(npm run test:*)"],
+    "deny": ["Shell(rm:*)"]
+  }
+}

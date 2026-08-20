@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "command": "echo pre-edit-check", "type": "command", "timeout": 10, "matcher": "Write" }
+    ]
+  }
+}
