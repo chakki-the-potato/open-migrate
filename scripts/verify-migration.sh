@@ -18,9 +18,29 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-mcp_exec="$(mktemp)"
-trap 'rm -f "$mcp_exec"' EXIT
-grep -vE '^[[:space:]]*#' "${mig_dir}mcp-commands.sh" > "$mcp_exec" 2>/dev/null || true
+mcp_json="$(mktemp)"
+trap 'rm -f "$mcp_json"' EXIT
+python3 -c "
+import json, shlex, sys, pathlib
+try:
+    text = pathlib.Path(sys.argv[1]).read_text()
+except OSError:
+    print(\"[]\")
+    raise SystemExit
+text = text.replace(\"\\\\\\n\", \" \")
+out = []
+for raw in text.splitlines():
+    lex = shlex.shlex(raw, posix=True)
+    lex.whitespace_split = True
+    lex.commenters = \"#\"
+    try:
+        toks = list(lex)
+    except ValueError:
+        toks = []
+    if toks:
+        out.append(toks)
+print(json.dumps(out))
+" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
@@ -79,18 +99,17 @@ chk "report: disabled server noted"    grep -qF "disabled_one" "${mig_dir}REPORT
 chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md"
 chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
 
-# MCP 등록 명령 (payload까지)
+# MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈에 영향받지 않음)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "$mcp_exec"
-chk "mcp add: env carried"             grep -qE -- '--env[[:space:]]+"?LOG_LEVEL=info"?' "$mcp_exec"
-chk "mcp add: args separator used"     grep -qE -- '[[:space:]]--[[:space:]]+npx' "$mcp_exec"
-chk "mcp add: stdio package arg"       grep -qF "@modelcontextprotocol/server-everything" "$mcp_exec"
-chk "mcp add: secretsvc registered"    grep -qE 'claude mcp add.*secretsvc' "$mcp_exec"
-chk "mcp add: http transport"          grep -qE -- '--transport[[:space:]]+http' "$mcp_exec"
-chk "mcp add: http url"                grep -qF "https://example.com/mcp" "$mcp_exec"
-chk "mcp add: everything one line"     awk '/claude mcp add/ && /(^|[ \t])everything([ \t]|$)/ && /LOG_LEVEL=info/ && /server-everything/ {f=1} END{exit !f}' "$mcp_exec"
-chk "mcp add: secretsvc one line"      awk '/claude mcp add/ && /secretsvc/ && /--transport[ \t]+http/ && /example\.com\/mcp/ {f=1} END{exit !f}' "$mcp_exec"
-chk_not "disabled server not added"    grep -qF 'disabled_one' "$mcp_exec"
+chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
+chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
+chk "mcp add: everything env"          jq -e 'any(.[]; any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
+chk "mcp add: everything separator"    jq -e 'any(.[]; any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
+chk "mcp add: everything package arg"  jq -e 'any(.[]; any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc"))' "$mcp_json"
+chk "mcp add: secretsvc http"          jq -e 'any(.[]; any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
+chk "mcp add: secretsvc url"           jq -e 'any(.[]; any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk_not "disabled server not added"    jq -e 'any(.[]; any(.[]; .=="disabled_one"))' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
