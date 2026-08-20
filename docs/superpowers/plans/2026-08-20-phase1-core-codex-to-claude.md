@@ -248,9 +248,29 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-mcp_exec="$(mktemp)"
-trap 'rm -f "$mcp_exec"' EXIT
-grep -vE '^[[:space:]]*#' "${mig_dir}mcp-commands.sh" > "$mcp_exec" 2>/dev/null || true
+mcp_json="$(mktemp)"
+trap 'rm -f "$mcp_json"' EXIT
+python3 -c "
+import json, shlex, sys, pathlib
+try:
+    text = pathlib.Path(sys.argv[1]).read_text()
+except OSError:
+    print(\"[]\")
+    raise SystemExit
+text = text.replace(\"\\\\\\n\", \" \")
+out = []
+for raw in text.splitlines():
+    lex = shlex.shlex(raw, posix=True)
+    lex.whitespace_split = True
+    lex.commenters = \"#\"
+    try:
+        toks = list(lex)
+    except ValueError:
+        toks = []
+    if toks:
+        out.append(toks)
+print(json.dumps(out))
+" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
@@ -309,18 +329,17 @@ chk "report: disabled server noted"    grep -qF "disabled_one" "${mig_dir}REPORT
 chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md"
 chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
 
-# MCP 등록 명령 (payload까지)
+# MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈에 영향받지 않음)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "$mcp_exec"
-chk "mcp add: env carried"             grep -qE -- '--env[[:space:]]+"?LOG_LEVEL=info"?' "$mcp_exec"
-chk "mcp add: args separator used"     grep -qE -- '[[:space:]]--[[:space:]]+npx' "$mcp_exec"
-chk "mcp add: stdio package arg"       grep -qF "@modelcontextprotocol/server-everything" "$mcp_exec"
-chk "mcp add: secretsvc registered"    grep -qE 'claude mcp add.*secretsvc' "$mcp_exec"
-chk "mcp add: http transport"          grep -qE -- '--transport[[:space:]]+http' "$mcp_exec"
-chk "mcp add: http url"                grep -qF "https://example.com/mcp" "$mcp_exec"
-chk "mcp add: everything one line"     awk '/claude mcp add/ && /(^|[ \t])everything([ \t]|$)/ && /LOG_LEVEL=info/ && /server-everything/ {f=1} END{exit !f}' "$mcp_exec"
-chk "mcp add: secretsvc one line"      awk '/claude mcp add/ && /secretsvc/ && /--transport[ \t]+http/ && /example\.com\/mcp/ {f=1} END{exit !f}' "$mcp_exec"
-chk_not "disabled server not added"    grep -qF 'disabled_one' "$mcp_exec"
+chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
+chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
+chk "mcp add: everything env"          jq -e 'any(.[]; any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
+chk "mcp add: everything separator"    jq -e 'any(.[]; any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
+chk "mcp add: everything package arg"  jq -e 'any(.[]; any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc"))' "$mcp_json"
+chk "mcp add: secretsvc http"          jq -e 'any(.[]; any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
+chk "mcp add: secretsvc url"           jq -e 'any(.[]; any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk_not "disabled server not added"    jq -e 'any(.[]; any(.[]; .=="disabled_one"))' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
@@ -349,17 +368,17 @@ chmod +x scripts/verify-migration.sh
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target"
 ```
 
-Expected: PASS 17 / FAIL 46, exit code 1. PASS 17개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
+Expected: PASS 17 / FAIL 45, exit code 1. PASS 17개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
 
 - [ ] **Step 2b: 긍정 경로 증명 (필수)**
 
-"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 63개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
+"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 62개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
 
 ```bash
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target"
 ```
 
-Expected: PASS 63 / FAIL 0, exit code 0.
+Expected: PASS 62 / FAIL 0, exit code 0.
 
 - [ ] **Step 3: Commit**
 
@@ -899,7 +918,8 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - Task 1 코드 품질 리뷰 반영: `AGENTS.override.md` 프리시던스 디코이, 스킬 지원 파일(`reference/tone.md`), `everything` 서버명 정밀 매칭(패키지명 부분 일치로 오통과 방지), 비활성 서버 부정 검증 추가.
 - `mcp add: everything by name` 패턴 확정 경위: 1차 앵커안 `claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]` 은 "이름 바로 뒤에 `--`" 를 요구해 토큰 순서에 결합되는 문제가 있었다. `claude mcp add` 는 플래그를 이름 앞(`--env ... everything --`)에도 뒤(`everything --env ... --`)에도 둘 수 있어 이 앵커는 후자에서 거짓 실패한다. 최종안 `(^|[[:space:]])everything([[:space:]]|$)` 은 서버명을 공백 구분 독립 토큰으로만 매칭하므로 순서에 무관하고, 패키지명 `server-everything`(앞이 `-`)은 여전히 배제한다.
 
-- Task 2 코드 품질 리뷰 반영(체크 40→60): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
+- Task 2 코드 품질 리뷰 3라운드 반영(체크 40→62): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
+- MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`shlex`로 파싱 → jq 정확 토큰 일치)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 3종(트레일링 주석 은닉·주석 줄 은닉·이름 변조)과 거짓 FAIL 부재 2종(줄바꿈·따옴표)을 부정 테스트로 실증.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 
