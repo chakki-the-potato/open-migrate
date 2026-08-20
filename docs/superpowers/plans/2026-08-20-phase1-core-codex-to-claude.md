@@ -274,7 +274,7 @@ chk "report: keybindings non-migratable" grep -qi "keybinding" "${mig_dir}REPORT
 chk "report: disabled server noted"    grep -q "disabled_one" "${mig_dir}REPORT.md"
 chk "report: secret re-entry listed"   grep -q "X-API-Key" "${mig_dir}REPORT.md"
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp add: everything by name"      grep -qE 'claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]' "${mig_dir}mcp-commands.sh"
+chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "${mig_dir}mcp-commands.sh"
 chk "mcp add: env carried"             grep -q -- '--env LOG_LEVEL=info' "${mig_dir}mcp-commands.sh"
 chk "mcp add: args separator used"     grep -q -- ' -- npx' "${mig_dir}mcp-commands.sh"
 chk "mcp add: secretsvc present"       grep -q 'secretsvc' "${mig_dir}mcp-commands.sh"
@@ -822,7 +822,8 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - 자동 감지 모드: SKILL.md에 포함(Task 8). 플러그인 패키징은 Phase 5 — 제외.
 - 타입/이름 일관성: run-id 형식, `.migrate/<run-id>/` 경로, `ledger.json` 위치(`<타겟>/.migrate/ledger.json`), `<REDACTED-REENTER>` 문자열, 리포트 섹션명이 Task 2(검증기)·3·5·6 간 일치함을 확인.
 - 교차 리뷰(3-way 워크플로) 지적 16건 반영 완료: 비공식 훅 이벤트 규칙, prompts 카테고리, `claude mcp add`의 `--`·`--env`, 픽스처 `type="http"` 제거, ask 케이스, defaultMode 부정 검증, 재설치 루프, 소스 루트 오버라이드, 절대 경로, Write 도구 노트, 원장 재실행 검증 등.
-- Task 1 코드 품질 리뷰 반영: `AGENTS.override.md` 프리시던스 디코이, 스킬 지원 파일(`reference/tone.md`), `everything` 서버명 앵커 매칭(패키지명 부분 일치로 오통과 방지), 비활성 서버 부정 검증 추가.
+- Task 1 코드 품질 리뷰 반영: `AGENTS.override.md` 프리시던스 디코이, 스킬 지원 파일(`reference/tone.md`), `everything` 서버명 정밀 매칭(패키지명 부분 일치로 오통과 방지), 비활성 서버 부정 검증 추가.
+- `mcp add: everything by name` 패턴 확정 경위: 1차 앵커안 `claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]` 은 "이름 바로 뒤에 `--`" 를 요구해 토큰 순서에 결합되는 문제가 있었다. `claude mcp add` 는 플래그를 이름 앞(`--env ... everything --`)에도 뒤(`everything --env ... --`)에도 둘 수 있어 이 앵커는 후자에서 거짓 실패한다. 최종안 `(^|[[:space:]])everything([[:space:]]|$)` 은 서버명을 공백 구분 독립 토큰으로만 매칭하므로 순서에 무관하고, 패키지명 `server-everything`(앞이 `-`)은 여전히 배제한다.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 
