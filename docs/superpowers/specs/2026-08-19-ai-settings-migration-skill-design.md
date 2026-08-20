@@ -74,7 +74,7 @@ adapters/
 1. **Scan** — 소스 지식 문서 기준으로 설정 파일 인벤토리. 시크릿 파일(auth.json 등)은 존재만 확인, 내용 접근 금지.
 2. **Plan** — 카테고리별 분류 제시: 자동 이관 / 손실 매핑(근사치) / 이관 불가(수동 조치).
 3. **Confirm** — 사용자 승인. 카테고리 단위 제외 선택 가능. 승인 전 어떤 쓰기도 하지 않는다.
-4. **Apply** — 대상 파일 백업(`.bak-<timestamp>`) 후 병합. 덮어쓰기 금지. MCP 등록은 `~/.claude.json` 직접 수정 대신 `claude mcp add` CLI 경유(공식 문서 권고).
+4. **Apply** — 대상 파일을 `<타겟>/.migrate/<run-id>/backup/` 에 백업 후 병합(백업·리포트·원장·MCP 명령을 run 단위로 한곳에 모음). 덮어쓰기 금지. MCP 등록은 `~/.claude.json` 직접 수정 대신 `claude mcp add` CLI 경유(공식 문서 권고).
 5. **Report** — 이관 완료 / 근사 매핑 상세 / 수동 조치 목록(시크릿 재입력 등) 출력. 검증 명령(`claude mcp list` 등) 실행 결과 포함.
 
 ## Codex↔Claude 매핑표 (리서치 검증 완료)
