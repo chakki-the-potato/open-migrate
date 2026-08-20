@@ -1,6 +1,3 @@
-# Global Rules
+# Global Rules (overridden)
 
-@~/.agent-rules-fixture.md
-
-- Answer in Korean.
-- Never commit secrets.
+- OVERRIDDEN-DECOY must never reach the target.
