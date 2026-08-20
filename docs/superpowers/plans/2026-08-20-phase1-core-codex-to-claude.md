@@ -409,13 +409,14 @@ git commit -m "test: add deterministic E2E verifier for migration output"
 - env: `.env`, `.env.*` (`.env.example`/`.env.sample`/`.env.template` 제외)
 - SSH: `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `~/.ssh/*`
 - 존재 여부 확인(파일명·크기)만 허용. 내용을 읽었다면 그 시점에 작업을 중단하고 사용자에게 보고한다.
+- 소스뿐 아니라 **타겟 쪽 설정 파일도 같은 규칙으로 다룬다.** 충돌 확인을 위해 타겟 설정을 읽을 때도 파일 전체를 그대로 출력하지 말고, 필요한 키 이름·구조만 추출해 확인한다 — 타겟에 이미 들어 있던 시크릿을 출력에 노출시키지 않기 위해서다.
 
 ## 설정 안의 시크릿 값 탐지
 
 다음에 해당하는 값은 시크릿으로 간주한다.
 - 키 이름이 `*key*`, `*token*`, `*secret*`, `*password*`, `Authorization`, `X-API-Key` 등 인증 계열인 값
 - `sk-`, `ghp_`, `xoxb-`, `AKIA` 등 알려진 키 접두사로 시작하는 값
-- MCP 서버 정의의 `env`/`headers`/`http_headers` 안의 20자 이상 고엔트로피 문자열
+- MCP 서버 정의의 `env`/`headers`/`http_headers` 안의 20자 이상 고엔트로피 문자열. 단 절대 경로·URL·디렉토리 목록처럼 형태로 시크릿이 아님이 명백한 값은 제외한다. 판별이 애매하면 값을 출력하지 말고 **키 이름만** 수동 조치 목록에 올려 사용자가 판단하게 한다
 
 ## 시크릿 처리 규칙
 
@@ -466,15 +467,17 @@ git commit -m "feat: add security policy for secret handling and write safety"
 |---|---|---|
 | 전역 규칙 | `AGENTS.override.md` 가 있으면 **그것만** 읽고 `AGENTS.md` 는 완전히 무시. 없을 때만 `AGENTS.md` | markdown, `@경로` import 지원. 무시된 `AGENTS.md` 의 내용은 이관·병합은 물론 리포트에도 인용하지 않는다 |
 | MCP | `config.toml` `[mcp_servers.<name>]` | TOML. stdio: command/args/env. HTTP는 `url` 키 존재로 판별 (+선택: http_headers/bearer_token_env_var). `enabled=false`는 비활성 |
-| 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능 |
+| 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능. 단 `skills/.system/` 하위(도구 내장)는 제외하고, 벤더 배포물(LICENSE/NOTICE 동반)이나 플러그인 공급 스킬은 사용자 소유가 아니므로 리포트에 구분해 표시한 뒤 이관 여부를 사용자가 정하게 한다 |
 | 커스텀 프롬프트 | `prompts/*.md` (deprecated) | 평문 markdown, `$1`-`$9`/`$ARGUMENTS` 치환 |
-| 훅 | `hooks.json` 또는 `config.toml` `[[hooks.Event]]` | Claude와 동일 JSON 구조 |
+| 훅 | `hooks.json` (주 위치) 또는 `config.toml` `[[hooks.Event]]` 인라인 정의 | Claude와 동일 JSON 구조. 주의: `config.toml` 의 `[hooks.state]` 는 훅 정의가 아니라 신뢰 해시 캐시다 — 이관 대상이 아니며 타겟에서 재생성된다 |
 | 권한 규칙 | `rules/*.rules` | Starlark `prefix_rule(pattern=[...], decision=...)` |
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
 | env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 Claude 에 등가물 없음 → 리포트에 이관 불가로 기록 | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
 | 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
+| 플러그인/마켓 | `config.toml` `[plugins."<name>@<market>"]`, `[marketplaces.*]`, `plugins/cache/` | 이관하지 않음 — 플러그인은 마켓플레이스에서 재설치해야 한다. 다만 **스킬·서브에이전트·훅의 상당수가 플러그인이 공급한 것**이므로, 이관 전에 어떤 항목이 플러그인 소유인지 확인하고 리포트에 마켓·플러그인 이름을 나열해 사용자가 재설치로 갈음할지 결정하게 한다 |
+| 프로젝트 훅 | `<repo>/.codex/hooks.json` | 전역 이관 범위 밖 — 존재를 발견하면 리포트에 안내만 |
 | 키바인딩 | `keybindings.json` | 명령 체계 상이 — 이관 불가, 안내만 |
 | 읽지 말 것 | `auth.json`, `sessions/`, `history.jsonl`, `*.sqlite`, `.codex-global-state.json` | security.md 적용 |
 
@@ -553,13 +556,13 @@ git commit -m "feat: add Codex tool knowledge doc (read/write/conversion rules)"
 | 카테고리 | 쓰기 위치 | 방법 |
 |---|---|---|
 | 전역 규칙 | `CLAUDE.md` | 파일 끝에 `## Migrated from <source> (<date>)` 섹션으로 **원문 그대로** 병합(요약·재작성 금지). 소스의 `@import` 줄과 기존 파일의 `@import` 줄 모두 원문 유지. 기존 내용 삭제 금지. 수정 전 원본을 `.migrate/<run-id>/backup/CLAUDE.md` 로 복사 |
-| MCP | `claude mcp add` CLI | **`~/.claude.json` 직접 수정 금지** (공식 권고). stdio: `claude mcp add --scope user [--env KEY=VALUE ...] <name> -- <command> [args...]` — 서버 인자 앞 `--` 구분자 필수(인자가 `-y`처럼 대시로 시작하면 없을 때 오파싱). 예: `claude mcp add --scope user --env LOG_LEVEL=info everything -- npx -y @modelcontextprotocol/server-everything`. HTTP: `claude mcp add --scope user --transport http <name> <url> [--header "K: V"]`. env 값·헤더 값 모두 security.md 시크릿 탐지 대상 — 시크릿은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재 |
+| MCP | `claude mcp add` CLI | **동명 서버가 타겟에 이미 있으면 등록하지 말고 건너뛴 뒤 리포트에 기록**한다(정의가 달라도 자동 판단 금지 — Confirm 에서 사용자에게 묻는다). 실사용 환경에서는 활성 서버 대부분이 이미 동명으로 존재한다. 기존 서버 목록은 `~/.claude.json` 의 `mcpServers`·`projects[<path>].mcpServers`, 프로젝트 `.mcp.json`, 그리고 `~/.claude/mcp.json` 을 모두 확인한다. **`~/.claude.json` 직접 수정 금지** (공식 권고). stdio: `claude mcp add --scope user [--env KEY=VALUE ...] <name> -- <command> [args...]` — 서버 인자 앞 `--` 구분자 필수(인자가 `-y`처럼 대시로 시작하면 없을 때 오파싱). 예: `claude mcp add --scope user --env LOG_LEVEL=info everything -- npx -y @modelcontextprotocol/server-everything`. HTTP: `claude mcp add --scope user --transport http <name> <url> [--header "K: V"]`. env 값·헤더 값 모두 security.md 시크릿 탐지 대상 — 시크릿은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재 |
 | 스킬 | `skills/<name>/SKILL.md` | 디렉토리째 복사. 동명 스킬 존재 시 건너뛰고 리포트에 기록 |
 | 커맨드 | `commands/<name>.md` | 평문 markdown. `$1`-`$9`/`$ARGUMENTS` 치환 지원 — 소스의 치환 토큰 원문 유지 |
-| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 중복이면 스킵. 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 같은 Claude 확장 이벤트(동명이면 그대로 수용). 이 목록에 없는 이벤트명은 Claude 공식 훅 이벤트인지 확인하고, 확인되지 않으면 드롭한 뒤 리포트에 기록한다 |
+| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 면 스킵. 경로 표기·플래그만 다르고 같은 스크립트를 부르는 **근사 중복**도 스킵 후보로 보고 Confirm 에서 확인한다(문자열이 달라 자동 판정이 안 되므로 사용자에게 묻는다). 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 같은 Claude 확장 이벤트(동명이면 그대로 수용). 이 목록에 없는 이벤트명은 Claude 공식 훅 이벤트인지 확인하고, 확인되지 않으면 드롭한 뒤 리포트에 기록한다 |
 | 권한 | `settings.json`의 `permissions.allow` / `deny` / `ask` | 배열에 append, 중복 제거. 공식 문서는 세션 내 `/permissions` 사용을 권하지만, 일괄 마이그레이션에서는 백업+jq 검증+실패 시 복원을 전제로 직접 병합한다(의도된 이탈). `defaultMode`는 절대 자동 설정하지 않음 — 근사 매핑표는 제안으로만 리포트에 기재 |
 | env | `settings.json`의 `env` 객체 | 키 단위 병합. 기존 키와 값이 다르면 충돌 — 사용자에게 질문 |
-| 서브에이전트 | `agents/<name>.md` | frontmatter: name, description. 본문 = 시스템 프롬프트 |
+| 서브에이전트 | `agents/<name>.md` | frontmatter: name, description. 본문 = 시스템 프롬프트. **동명 파일이 이미 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** — 실사용 환경에서는 같은 플러그인이 양쪽에 설치돼 전량 충돌하는 경우가 흔하다 |
 
 ## settings.json 병합 규칙
 
@@ -578,7 +581,7 @@ git commit -m "feat: add Codex tool knowledge doc (read/write/conversion rules)"
 | 카테고리 | 위치 |
 |---|---|
 | 전역 규칙 | `~/.claude/CLAUDE.md` (`@경로` import 체인 포함) |
-| MCP | `~/.claude.json` 최상위 `mcpServers` (user scope), `projects["<path>"].mcpServers` (local scope), 프로젝트 `.mcp.json` |
+| MCP | `~/.claude.json` 최상위 `mcpServers` (user scope), `projects["<path>"].mcpServers` (local scope), 프로젝트 `.mcp.json`, `~/.claude/mcp.json` (비표준이지만 실사용 사례 있음 — 충돌 검사에 포함) |
 | 스킬 | `~/.claude/skills/<name>/SKILL.md` |
 | 훅 | `settings.json` `hooks` (command 타입만 이관 대상 — http/mcp_tool/prompt/agent 타입은 타 도구 미지원, 스킵 후 기록) |
 | 권한 | `settings.json`, `settings.local.json` `permissions` |
@@ -928,6 +931,16 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 
 - Task 2 코드 품질 리뷰 3라운드 반영(체크 40→62): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
 - MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`scripts/parse-mcp-commands.py` 가 `shlex` 파싱 + 셸 제어연산자(`;` `&&` `||` `|`) 분할 후 각 `claude mcp add` 를 `{name, flags, args, cmd}` 로 구조 분해 → jq 로 이름 위치·플래그 키값·`--` 뒤 실행 명령을 각각 검사)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 9종(트레일링 주석 은닉·주석 줄 은닉·이름 변조·`&&` 이어붙이기·`;` 이어붙이기·조건 분산·포지셔널 위치 반전·디코이 플래그 값·같은 이름 명령의 조건 분산)과 거짓 FAIL 부재 4종(줄바꿈·따옴표·정상 `&&` 결합·플래그 순서 변경)을 부정 테스트로 실증.
+
+## 실기기 dry-run(Task 10) 후속 — 백로그
+
+실제 `~/.codex`(프로젝트 신뢰 45건, 서브에이전트 33건, 권한 규칙 353건, 플러그인 22개) 스캔에서 드러난 항목. 위험한 것(서브에이전트·MCP 동명 충돌, 4번째 MCP 소스, 훅 근사 중복, 플러그인 표면, 내장·벤더 스킬 구분, 시크릿 휴리스틱 오탐, 타겟 파일 출력 규율)은 문서에 즉시 반영했고, 아래는 남긴 것이다.
+
+- 권한 규칙 353건 중 인라인 Perl/Node 스크립트·정규식·중첩 따옴표를 포함한 패턴은 문서 규칙대로 공백조인하면 판독 불가한 초장문 글롭이 된다 — 변환 규칙 정교화 필요.
+- 전역 규칙 verbatim 병합이 소스·타겟이 이미 공유하는 `@import` 줄을 중복시킬 수 있다(동작 무해, 미관 문제).
+- 대량 그룹(프로젝트 신뢰 45건 등)의 리포트 요약 규칙이 문서에 없다 — 항목별 나열이 비현실적인 규모.
+- `config.toml` `notify` 배열(외부 알림 프로그램 경로)이 인벤토리에 없다.
+- 픽스처가 실사용 규모·다양성을 전혀 반영하지 않는다(합성 소형). 실사용 유사 픽스처 추가 검토.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 

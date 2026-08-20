@@ -12,15 +12,17 @@
 |---|---|---|
 | 전역 규칙 | `AGENTS.override.md` 가 있으면 **그것만** 읽고 `AGENTS.md` 는 완전히 무시. 없을 때만 `AGENTS.md` | markdown, `@경로` import 지원. 무시된 `AGENTS.md` 의 내용은 이관·병합은 물론 리포트에도 인용하지 않는다 |
 | MCP | `config.toml` `[mcp_servers.<name>]` | TOML. stdio: command/args/env. HTTP는 `url` 키 존재로 판별 (+선택: http_headers/bearer_token_env_var). `enabled=false`는 비활성 |
-| 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능 |
+| 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능. 단 `skills/.system/` 하위(도구 내장)는 제외하고, 벤더 배포물(LICENSE/NOTICE 동반)이나 플러그인 공급 스킬은 사용자 소유가 아니므로 리포트에 구분해 표시한 뒤 이관 여부를 사용자가 정하게 한다 |
 | 커스텀 프롬프트 | `prompts/*.md` (deprecated) | 평문 markdown, `$1`-`$9`/`$ARGUMENTS` 치환 |
-| 훅 | `hooks.json` 또는 `config.toml` `[[hooks.Event]]` | Claude와 동일 JSON 구조 |
+| 훅 | `hooks.json` (주 위치) 또는 `config.toml` `[[hooks.Event]]` 인라인 정의 | Claude와 동일 JSON 구조. 주의: `config.toml` 의 `[hooks.state]` 는 훅 정의가 아니라 신뢰 해시 캐시다 — 이관 대상이 아니며 타겟에서 재생성된다 |
 | 권한 규칙 | `rules/*.rules` | Starlark `prefix_rule(pattern=[...], decision=...)` |
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
 | env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 Claude 에 등가물 없음 → 리포트에 이관 불가로 기록 | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
 | 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
+| 플러그인/마켓 | `config.toml` `[plugins."<name>@<market>"]`, `[marketplaces.*]`, `plugins/cache/` | 이관하지 않음 — 플러그인은 마켓플레이스에서 재설치해야 한다. 다만 **스킬·서브에이전트·훅의 상당수가 플러그인이 공급한 것**이므로, 이관 전에 어떤 항목이 플러그인 소유인지 확인하고 리포트에 마켓·플러그인 이름을 나열해 사용자가 재설치로 갈음할지 결정하게 한다 |
+| 프로젝트 훅 | `<repo>/.codex/hooks.json` | 전역 이관 범위 밖 — 존재를 발견하면 리포트에 안내만 |
 | 키바인딩 | `keybindings.json` | 명령 체계 상이 — 이관 불가, 안내만 |
 | 읽지 말 것 | `auth.json`, `sessions/`, `history.jsonl`, `*.sqlite`, `.codex-global-state.json` | security.md 적용 |
 
