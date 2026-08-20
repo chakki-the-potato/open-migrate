@@ -4,7 +4,9 @@
 
 **Goal:** Claude·Codex·Cursor·Grok 4개 도구 사이 12방향 마이그레이션을 완성하고, Claude 플러그인으로 패키징한다.
 
-**Architecture:** Phase 1이 만든 구조(지식 문서 + AI 변환)를 유지한다. 검증은 방향별로 만들지 않는다 — **도구별 소스 픽스처 1개 + 도구별 타겟 검증기 1개**를 두고, 4개 픽스처가 논리적으로 동일한 설정을 각 도구 네이티브 포맷으로 표현한다. 그러면 임의의 (소스 픽스처, 타겟 검증기) 조합이 곧 방향 테스트가 되어 8개 산출물로 12방향을 커버한다.
+**Architecture:** Phase 1이 만든 구조(지식 문서 + AI 변환)를 유지한다. 검증은 방향별로 만들지 않는다 — **도구별 소스 픽스처 1개 + 도구별 타겟 검증기 1개 + 도구별 소스 체크 1개**를 두고, 4개 픽스처가 논리적으로 동일한 설정을 각 도구 네이티브 포맷으로 표현한다. 그러면 임의의 (소스, 타겟) 조합이 곧 방향 테스트가 되어 공통 1 + 타겟 N + 소스 N 파일로 N² 방향을 커버한다.
+
+소스 축이 필요한 이유: 리포트 내용 체크 일부가 소스 도구 종속이다(모델명 등은 도구마다 달라 픽스처 통일이 불가능). 이를 타겟 파일에 두면 다른 소스에서 온 실행이 잘못 실패한다.
 
 **Tech Stack:** Markdown(지식 문서), Bash(검증기·설치), Python(파서), jq/tomllib(검증), git.
 
@@ -50,13 +52,17 @@
 
 ```
 scripts/
-  verify-migration.sh        디스패처. <target-root> <target-tool> 인자. [Task A]
+  verify-migration.sh        디스패처. <target-root> <target-tool> <source-tool> 인자. [Task A]
   checks/
-    _common.sh               run-dir·백업·원장·시크릿 — 도구 무관. [Task A]
+    _common.sh               run-dir·원장·시크릿·디코이 — 도구 무관. [Task A]
     target-claude.sh         Claude 타겟 검증. [Task A]
     target-codex.sh          Codex 타겟 검증. [Task C]
     target-cursor.sh         Cursor 타겟 검증. [Task G]
     target-grok.sh           Grok 타겟 검증. [Task I]
+    source-codex.sh          Codex 소스 종속 리포트 검증. [Task A]
+    source-claude.sh         Claude 소스 종속 리포트 검증. [Task C]
+    source-cursor.sh         Cursor 소스 종속 리포트 검증. [Task G]
+    source-grok.sh           Grok 소스 종속 리포트 검증. [Task I]
   parse-mcp-commands.py      (기존)
 core/tools/
   cursor.md                  [Task F]
@@ -81,7 +87,7 @@ README.md                    [Task L]
 
 **Files:**
 - Modify: `scripts/verify-migration.sh`
-- Create: `scripts/checks/_common.sh`, `scripts/checks/target-claude.sh`
+- Create: `scripts/checks/_common.sh`, `scripts/checks/target-claude.sh`, `scripts/checks/source-codex.sh`
 
 - [ ] **Step 1: 공통/타겟 경계 확정**
 
@@ -99,8 +105,9 @@ README.md                    [Task L]
 #!/usr/bin/env bash
 # set -e 는 의도적으로 쓰지 않는다 — 개별 체크가 실패해도 전부 끝까지 돌려 한 번에 진단한다.
 set -uo pipefail
-TARGET="${1:?usage: verify-migration.sh <target-root> <target-tool>}"
-TOOL="${2:?usage: verify-migration.sh <target-root> <target-tool>}"
+TARGET="${1:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
+TOOL="${2:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
+SOURCE="${3:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
 fail=0
 
 chk() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "PASS: $d"; else echo "FAIL: $d"; fail=1; fi; }
@@ -108,8 +115,13 @@ chk_not() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "FAIL: $d"; 
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 tool_checks="$script_dir/checks/target-$TOOL.sh"
+source_checks="$script_dir/checks/source-$SOURCE.sh"
 if [ ! -f "$tool_checks" ]; then
   echo "ERROR: no checks for target tool '$TOOL' ($tool_checks)"
+  exit 1
+fi
+if [ ! -f "$source_checks" ]; then
+  echo "ERROR: no checks for source tool '$SOURCE' ($source_checks)"
   exit 1
 fi
 
@@ -120,17 +132,20 @@ fi
 
 . "$script_dir/checks/_common.sh"
 . "$tool_checks"
+. "$source_checks"
 
 exit $fail
 ```
 
-`_common.sh` 는 `mig_dir`·`backup_claude`·`backup_settings` 대신 도구 무관 이름(`mig_dir`, `backup_dir`)을 계산해 export 하고, 타겟별 백업 파일명은 각 `target-*.sh` 가 정한다.
+`_common.sh` 는 도구 무관한 것만 계산해 export 한다 — `mig_dir`(최신 run), `is_noop_rerun`(원장 스킵으로 정당하게 아무것도 안 만든 재실행인지), `find_run_artifact <run 상대경로>`(그 판정을 반영해 산출물 경로를 해석하는 헬퍼). 타겟별 백업 파일명은 각 `target-*.sh` 가 정한다.
+
+소스 종속 리포트 체크(모델명 등)는 `target-*.sh` 가 아니라 `source-*.sh` 에 둔다 — 타겟 파일에 두면 다른 소스에서 온 실행이 잘못 실패한다.
 
 - [ ] **Step 3: 회귀 확인**
 
 ```bash
-./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target" claude
-./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target" claude
+./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target" claude codex
+./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target" claude codex
 ```
 
 Expected: 둘 다 전 항목 PASS·exit 0. 체크 총 개수가 분해 전(64)과 동일해야 한다 — 분해 과정에서 체크가 누락되지 않았다는 증거다.
@@ -320,7 +335,7 @@ print(json.dumps(data))
 
 ```bash
 mkdir -p test/tmp/codex-target
-./scripts/verify-migration.sh "$(pwd)/test/tmp/codex-target" codex
+./scripts/verify-migration.sh "$(pwd)/test/tmp/codex-target" codex claude
 ```
 
 Expected: 다수 FAIL, exit 1.
@@ -441,7 +456,7 @@ TOML
 - [ ] **Step 3: 검증**
 
 ```bash
-./scripts/verify-migration.sh "$(pwd)/test/tmp/codex-target" codex
+./scripts/verify-migration.sh "$(pwd)/test/tmp/codex-target" codex claude
 ```
 
 Expected: 전 항목 PASS, exit 0.
@@ -457,7 +472,7 @@ Expected: 전 항목 PASS, exit 0.
 Codex→Claude 방향이 여전히 통과하는지 확인한다.
 
 ```bash
-./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target" claude
+./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target" claude codex
 ```
 
 Expected: 전 항목 PASS. 문서 수정이 반대 방향을 깨뜨리지 않았다는 증거다.
@@ -540,11 +555,11 @@ Task C 와 같은 방식. Cursor 타겟일 때 기대 산출물을 검증하고,
 
 - [ ] **Step 1: cursor → claude**
 
-소스 루트 `test/fixtures/cursor-home`, 타겟 `test/tmp/claude-target-from-cursor`(기존 설정 심은 상태), 검증 `verify-migration.sh <target> claude`.
+소스 루트 `test/fixtures/cursor-home`, 타겟 `test/tmp/claude-target-from-cursor`(기존 설정 심은 상태), 검증 `verify-migration.sh <target> claude cursor`.
 
 - [ ] **Step 2: claude → cursor**
 
-소스 루트 `test/fixtures/claude-home`, 타겟 `test/tmp/cursor-target`, 검증 `verify-migration.sh <target> cursor`.
+소스 루트 `test/fixtures/claude-home`, 타겟 `test/tmp/cursor-target`, 검증 `verify-migration.sh <target> cursor claude`.
 
 - [ ] **Step 3: 수정 루프 + 회귀**
 
@@ -602,7 +617,7 @@ Task H 와 같은 구조로 `grok → claude`, `claude → grok` 두 방향을 �
 
 - [ ] **Step 1: 실행**
 
-소스 루트 `test/fixtures/codex-home`, 타겟 `test/tmp/cursor-target-from-codex`, 검증 `verify-migration.sh <target> cursor`.
+소스 루트 `test/fixtures/codex-home`, 타겟 `test/tmp/cursor-target-from-codex`, 검증 `verify-migration.sh <target> cursor claude`.
 
 - [ ] **Step 2: 판정**
 
@@ -662,7 +677,7 @@ Expected: 통과. 실패하면 스키마 오류를 수정한다.
 - **이관되지 않는 것** 명시: API 키·인증 파일(재입력 목록으로 안내), 모델 설정, 단축키, 세션 기록
 - 손실 변환 경고: 권한 모델은 도구마다 표현력이 달라 근사 매핑이며 자동 적용하지 않음
 - 안전 보장: Confirm 승인 전 무쓰기, 백업 후 병합, 재실행 안전(원장)
-- 검증 방법: `./scripts/verify-migration.sh <target> <tool>`
+- 검증 방법: `./scripts/verify-migration.sh <target> <target-tool> <source-tool>`
 - Grok Build 는 이 저장소 개발 환경에 설치되어 있지 않아 실기기 검증이 안 된 상태임을 명시
 
 - [ ] **Step 5: Commit**
