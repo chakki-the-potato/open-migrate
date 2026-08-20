@@ -67,3 +67,26 @@ chk "ledger records source hashes"     jq -e '[..|strings] | map(select(test("^[
 # 시크릿 불가침
 chk_not "no MCP secret leaked"         grep -rqF "FAKE-SECRET-123" "$TARGET"
 chk_not "auth.json never copied"       grep -rqF "AUTH-FAKE-SECRET" "$TARGET"
+
+# ── 소스 도구의 표면 유무 ──────────────────────────────────────────────
+# 도구마다 아예 없는 설정 표면이 있다. 소스에 없는 것은 타겟에도 생길 수 없으므로,
+# target-*.sh 는 해당 카테고리 체크를 이 플래그로 감싸 소스가 제공할 수 있을 때만 검사한다.
+#   if [ "$src_has_commands" = 1 ]; then chk "..." ...; fi
+src_has_commands=1
+src_has_global_env=1
+src_has_ask_tier=1
+src_has_notification_hook=1
+case "$SOURCE" in
+  cursor)
+    # Cursor: 커맨드는 deprecated(스킬로 대체), 전역 env 표면 없음,
+    # 권한은 allow/deny 2단계뿐, Notification 훅 이벤트 미지원.
+    src_has_commands=0
+    src_has_global_env=0
+    src_has_ask_tier=0
+    src_has_notification_hook=0
+    ;;
+  grok)
+    # Grok Build: 커스텀 프롬프트 표면 없음.
+    src_has_commands=0
+    ;;
+esac

@@ -20,16 +20,22 @@ chk "existing hook preserved"          jq -e '[.hooks.PreToolUse[].matcher] | in
 chk "hook matcher converted"           jq -e '[.hooks.PreToolUse[].matcher] | index("Edit|Write") != null' "$TARGET/settings.json"
 chk "hook body paired with matcher"    jq -e '.hooks.PreToolUse | map(select(.matcher == "Edit|Write")) | .[0].hooks | map(select(.command == "echo pre-edit-check" and .timeout == 10)) | length >= 1' "$TARGET/settings.json"
 chk "existing hook body preserved"     jq -e '.hooks.PreToolUse | map(select(.matcher == "Read")) | .[0].hooks | map(select(.command == "echo existing-pre")) | length >= 1' "$TARGET/settings.json"
+if [ "$src_has_notification_hook" = 1 ]; then
 chk "notification hook migrated"       jq -e '[.hooks.Notification[].hooks[].command] | index("echo notify") != null' "$TARGET/settings.json"
+fi
 
 # settings.json — env 주입
+if [ "$src_has_global_env" = 1 ]; then
 chk "env injected"                     jq -e '.env.FIXTURE_FLAG == "1"' "$TARGET/settings.json"
+fi
 
 # settings.json — 권한 (정답 리스트 존재 + 오답 리스트 부재)
 chk "allow: git status"                jq -e '.permissions.allow | index("Bash(git status:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run build"             jq -e '.permissions.allow | index("Bash(npm run build:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run test"              jq -e '.permissions.allow | index("Bash(npm run test:*)") != null' "$TARGET/settings.json"
+if [ "$src_has_ask_tier" = 1 ]; then
 chk "ask: git push"                    jq -e '.permissions.ask | index("Bash(git push:*)") != null' "$TARGET/settings.json"
+fi
 chk "deny: rm"                         jq -e '.permissions.deny | index("Bash(rm:*)") != null' "$TARGET/settings.json"
 chk_not "git status not also denied"   jq -e '.permissions.deny | index("Bash(git status:*)") != null' "$TARGET/settings.json"
 chk_not "git push not also allowed"    jq -e '.permissions.allow | index("Bash(git push:*)") != null' "$TARGET/settings.json"
@@ -42,9 +48,11 @@ chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
 chk "skill content identical"          grep -qF "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
 chk "skill supporting file copied"     test -f "$TARGET/skills/hello/reference/tone.md"
 chk "skill supporting file content"    grep -qF "Keep the greeting under two sentences." "$TARGET/skills/hello/reference/tone.md"
+if [ "$src_has_commands" = 1 ]; then
 chk "prompt converted to command"      test -f "$TARGET/commands/greet.md"
 chk "command keeps ARGUMENTS token"    grep -qF '$ARGUMENTS' "$TARGET/commands/greet.md"
 chk "command body carried over"        grep -qF "warmly and mention today" "$TARGET/commands/greet.md"
+fi
 chk "agent converted to md"            test -f "$TARGET/agents/reviewer.md"
 chk "agent frontmatter name"           grep -q "^name: reviewer" "$TARGET/agents/reviewer.md"
 chk "agent description carried"        grep -qF "Reviews diffs for style violations" "$TARGET/agents/reviewer.md"
