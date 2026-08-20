@@ -319,9 +319,11 @@ chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$m
 chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
 chk "mcp add: everything command"      jq -e 'any(.[]; .name=="everything" and .cmd[0]=="npx")' "$mcp_json"
 chk "mcp add: everything package arg"  jq -e 'any(.[]; .name=="everything" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: everything complete"     jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info") and .cmd[0]=="npx" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
 chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mcp_json"
 chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
 chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http") and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
 chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
@@ -351,17 +353,17 @@ chmod +x scripts/verify-migration.sh
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target"
 ```
 
-Expected: PASS 17 / FAIL 45, exit code 1. PASS 17개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
+Expected: PASS 17 / FAIL 47, exit code 1. PASS 17개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
 
 - [ ] **Step 2b: 긍정 경로 증명 (필수)**
 
-"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 62개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
+"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 64개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
 
 ```bash
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target"
 ```
 
-Expected: PASS 62 / FAIL 0, exit code 0.
+Expected: PASS 64 / FAIL 0, exit code 0.
 
 - [ ] **Step 3: Commit**
 
@@ -902,7 +904,7 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - `mcp add: everything by name` 패턴 확정 경위: 1차 앵커안 `claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]` 은 "이름 바로 뒤에 `--`" 를 요구해 토큰 순서에 결합되는 문제가 있었다. `claude mcp add` 는 플래그를 이름 앞(`--env ... everything --`)에도 뒤(`everything --env ... --`)에도 둘 수 있어 이 앵커는 후자에서 거짓 실패한다. 최종안 `(^|[[:space:]])everything([[:space:]]|$)` 은 서버명을 공백 구분 독립 토큰으로만 매칭하므로 순서에 무관하고, 패키지명 `server-everything`(앞이 `-`)은 여전히 배제한다.
 
 - Task 2 코드 품질 리뷰 3라운드 반영(체크 40→62): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
-- MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`scripts/parse-mcp-commands.py` 가 `shlex` 파싱 + 셸 제어연산자(`;` `&&` `||` `|`) 분할 후 각 `claude mcp add` 를 `{name, flags, args, cmd}` 로 구조 분해 → jq 로 이름 위치·플래그 키값·`--` 뒤 실행 명령을 각각 검사)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 8종(트레일링 주석 은닉·주석 줄 은닉·이름 변조·`&&` 이어붙이기·`;` 이어붙이기·조건 분산·포지셔널 위치 반전·디코이 플래그 값)과 거짓 FAIL 부재 4종(줄바꿈·따옴표·정상 `&&` 결합·플래그 순서 변경)을 부정 테스트로 실증.
+- MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`scripts/parse-mcp-commands.py` 가 `shlex` 파싱 + 셸 제어연산자(`;` `&&` `||` `|`) 분할 후 각 `claude mcp add` 를 `{name, flags, args, cmd}` 로 구조 분해 → jq 로 이름 위치·플래그 키값·`--` 뒤 실행 명령을 각각 검사)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 9종(트레일링 주석 은닉·주석 줄 은닉·이름 변조·`&&` 이어붙이기·`;` 이어붙이기·조건 분산·포지셔널 위치 반전·디코이 플래그 값·같은 이름 명령의 조건 분산)과 거짓 FAIL 부재 4종(줄바꿈·따옴표·정상 `&&` 결합·플래그 순서 변경)을 부정 테스트로 실증.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 
