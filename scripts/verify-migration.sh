@@ -18,18 +18,26 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-# 실행 단위 산출물(백업·MCP 명령)은 모든 run 을 통틀어 찾는다 —
-# 원장 스킵으로 아무것도 바꾸지 않은 재실행은 백업도 새 MCP 명령도 남기지 않는 게 정상이다.
-backup_claude="$(ls "$TARGET/.migrate/"*/backup/CLAUDE.md 2>/dev/null | sort | tail -1)"
-backup_settings="$(ls "$TARGET/.migrate/"*/backup/settings.json 2>/dev/null | sort | tail -1)"
-: "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
-: "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
-
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 mcp_all="$(mktemp)"
 mcp_json="$(mktemp)"
 trap 'rm -f "$mcp_all" "$mcp_json"' EXIT
-cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
+
+# 실행 단위 산출물(백업·MCP 명령)은 원칙적으로 최신 run 에서 찾는다.
+# 최신 run 이 원장 스킵으로 정당하게 아무것도 새로 만들지 않은 경우(리포트에 "이미 이관됨" 기록)에만
+# 과거 run 의 산출물을 인정한다 — 그렇지 않으면 깨진 최신 run 이 과거 흔적으로 위장 통과한다.
+if grep -q "이미 이관됨" "${mig_dir}REPORT.md" 2>/dev/null; then
+  backup_claude="$(ls "$TARGET/.migrate/"*/backup/CLAUDE.md 2>/dev/null | sort | tail -1)"
+  backup_settings="$(ls "$TARGET/.migrate/"*/backup/settings.json 2>/dev/null | sort | tail -1)"
+  cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
+else
+  backup_claude="${mig_dir}backup/CLAUDE.md"
+  backup_settings="${mig_dir}backup/settings.json"
+  cat "${mig_dir}mcp-commands.sh" > "$mcp_all" 2>/dev/null || true
+fi
+: "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
+: "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
+
 python3 "$script_dir/parse-mcp-commands.py" "$mcp_all" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)

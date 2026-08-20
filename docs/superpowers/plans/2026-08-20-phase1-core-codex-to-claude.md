@@ -250,18 +250,26 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-# 실행 단위 산출물(백업·MCP 명령)은 모든 run 을 통틀어 찾는다 —
-# 원장 스킵으로 아무것도 바꾸지 않은 재실행은 백업도 새 MCP 명령도 남기지 않는 게 정상이다.
-backup_claude="$(ls "$TARGET/.migrate/"*/backup/CLAUDE.md 2>/dev/null | sort | tail -1)"
-backup_settings="$(ls "$TARGET/.migrate/"*/backup/settings.json 2>/dev/null | sort | tail -1)"
-: "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
-: "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
-
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 mcp_all="$(mktemp)"
 mcp_json="$(mktemp)"
 trap 'rm -f "$mcp_all" "$mcp_json"' EXIT
-cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
+
+# 실행 단위 산출물(백업·MCP 명령)은 원칙적으로 최신 run 에서 찾는다.
+# 최신 run 이 원장 스킵으로 정당하게 아무것도 새로 만들지 않은 경우(리포트에 "이미 이관됨" 기록)에만
+# 과거 run 의 산출물을 인정한다 — 그렇지 않으면 깨진 최신 run 이 과거 흔적으로 위장 통과한다.
+if grep -q "이미 이관됨" "${mig_dir}REPORT.md" 2>/dev/null; then
+  backup_claude="$(ls "$TARGET/.migrate/"*/backup/CLAUDE.md 2>/dev/null | sort | tail -1)"
+  backup_settings="$(ls "$TARGET/.migrate/"*/backup/settings.json 2>/dev/null | sort | tail -1)"
+  cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
+else
+  backup_claude="${mig_dir}backup/CLAUDE.md"
+  backup_settings="${mig_dir}backup/settings.json"
+  cat "${mig_dir}mcp-commands.sh" > "$mcp_all" 2>/dev/null || true
+fi
+: "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
+: "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
+
 python3 "$script_dir/parse-mcp-commands.py" "$mcp_all" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
@@ -638,7 +646,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 �
 1. `.migrate/<run-id>/backup/` 생성, 수정 대상 기존 파일 전부 백업.
 2. 원장 확인: `<타겟 루트>/.migrate/ledger.json` 에서 소스 파일의 sha256이 이미 기록돼 있으면 해당 항목은 건너뛰고 리포트에 "이미 이관됨"으로 기록 (재실행 안전).
 3. 타겟 문서의 쓰기 규칙대로 카테고리별 변환·병합 실행.
-4. 원장 갱신: 이관 대상으로 실제 읽은 소스 파일만 `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 기록한다. security.md 의 접근 금지 파일은 해시 계산을 위해서도 읽지 않으므로 원장에 넣지 않는다. 키는 소스 루트를 절대 경로로 해석한 뒤 파일의 상대 경로를 이어붙인 값이다 — 파일 하나당 항목 하나(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
+4. 원장 갱신: 이번 실행에서 실제로 읽은 소스 파일을 `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 기록한다. 자동·근사·불가 분류와 무관하게 읽은 파일은 모두 대상이다(다음 실행의 변경 감지에 필요). security.md 의 접근 금지 파일은 해시 계산을 위해서도 읽지 않으므로 원장에 넣지 않는다. 키는 소스 루트를 절대 경로로 해석한 뒤 파일의 상대 경로를 이어붙인 값이다 — 파일 하나당 항목 하나(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
 
 쓰기 실패(JSON 파싱 오류 등) 시: 해당 파일을 백업에서 복원하고, 남은 카테고리를 중단하고, 리포트에 실패 지점을 기록한다.
 
@@ -934,3 +942,4 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - 원장 sha256 임계값 — `unique length >= 5` 만 요구, 파일별 정확 매핑까지는 미검증.
 - `VALUE_FLAGS` 미등록 플래그가 이름보다 앞에 올 때 이름 오인식 가능성(거짓 FAIL 방향).
 - 같은 줄에서 같은 플래그를 모순되게 중복 지정하는 경우(`--transport http --transport ftp`) — 검증기 내부 동작을 알아야 구성 가능한 입력이라 위협 모델 밖.
+- 과거 run 산출물 폴백은 최신 run 리포트에 "이미 이관됨" 표기가 있을 때만 허용한다(E2E 리뷰에서 무조건 폴백이 깨진 최신 run 을 위장 통과시키는 것이 실증됨). 표기 자체를 위조하는 경우까지는 막지 않음 — 위협 모델 밖.
