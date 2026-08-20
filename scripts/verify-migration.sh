@@ -18,10 +18,19 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
+# 실행 단위 산출물(백업·MCP 명령)은 모든 run 을 통틀어 찾는다 —
+# 원장 스킵으로 아무것도 바꾸지 않은 재실행은 백업도 새 MCP 명령도 남기지 않는 게 정상이다.
+backup_claude="$(ls "$TARGET/.migrate/"*/backup/CLAUDE.md 2>/dev/null | sort | tail -1)"
+backup_settings="$(ls "$TARGET/.migrate/"*/backup/settings.json 2>/dev/null | sort | tail -1)"
+: "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
+: "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
+
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+mcp_all="$(mktemp)"
 mcp_json="$(mktemp)"
-trap 'rm -f "$mcp_json"' EXIT
-python3 "$script_dir/parse-mcp-commands.py" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
+trap 'rm -f "$mcp_all" "$mcp_json"' EXIT
+cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
+python3 "$script_dir/parse-mcp-commands.py" "$mcp_all" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
@@ -81,7 +90,7 @@ chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md
 chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
 
 # MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
-chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
+chk "mcp commands generated"           test -s "$mcp_all"
 chk "mcp add: two servers registered"  jq -e 'length >= 2' "$mcp_json"
 chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$mcp_json"
 chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
@@ -95,10 +104,10 @@ chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and an
 chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
-chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
-chk "backup CLAUDE.md is the original" grep -qF "Keep me." "${mig_dir}backup/CLAUDE.md"
-chk "backup of pre-existing settings"  test -f "${mig_dir}backup/settings.json"
-chk "backup settings is the original"  jq -e '.model == "claude-fable-5"' "${mig_dir}backup/settings.json"
+chk "backup of pre-existing CLAUDE.md" test -f "$backup_claude"
+chk "backup CLAUDE.md is the original" grep -qF "Keep me." "$backup_claude"
+chk "backup of pre-existing settings"  test -f "$backup_settings"
+chk "backup settings is the original"  jq -e '.model == "claude-fable-5"' "$backup_settings"
 
 # 원장 (존재 + 유효 + sha256 기록)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
