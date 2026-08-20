@@ -87,9 +87,11 @@ chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$m
 chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
 chk "mcp add: everything command"      jq -e 'any(.[]; .name=="everything" and .cmd[0]=="npx")' "$mcp_json"
 chk "mcp add: everything package arg"  jq -e 'any(.[]; .name=="everything" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: everything complete"     jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info") and .cmd[0]=="npx" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
 chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mcp_json"
 chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
 chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http") and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
 chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
