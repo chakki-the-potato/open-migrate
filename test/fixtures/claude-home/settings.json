@@ -1,0 +1,21 @@
+{
+  "model": "claude-fable-5",
+  "env": { "FIXTURE_FLAG": "1" },
+  "permissions": {
+    "allow": ["Bash(git status:*)", "Bash(npm run build:*)", "Bash(npm run test:*)"],
+    "ask": ["Bash(git push:*)"],
+    "deny": ["Bash(rm:*)"],
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "echo pre-edit-check", "timeout": 10 } ] }
+    ],
+    "Notification": [
+      { "matcher": "", "hooks": [ { "type": "command", "command": "echo notify" } ] }
+    ],
+    "ConfigChange": [
+      { "matcher": "", "hooks": [ { "type": "command", "command": "echo claude-only-event" } ] }
+    ]
+  }
+}
