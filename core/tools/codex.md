@@ -10,7 +10,7 @@
 
 | 카테고리 | 위치 | 포맷 |
 |---|---|---|
-| 전역 규칙 | `AGENTS.md` (`AGENTS.override.md` 우선) | markdown, `@경로` import 지원 |
+| 전역 규칙 | `AGENTS.override.md` 가 있으면 **그것만** 읽고 `AGENTS.md` 는 완전히 무시. 없을 때만 `AGENTS.md` | markdown, `@경로` import 지원. 무시된 `AGENTS.md` 의 내용은 이관·병합은 물론 리포트에도 인용하지 않는다 |
 | MCP | `config.toml` `[mcp_servers.<name>]` | TOML. stdio: command/args/env. HTTP는 `url` 키 존재로 판별 (+선택: http_headers/bearer_token_env_var). `enabled=false`는 비활성 |
 | 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능 |
 | 커스텀 프롬프트 | `prompts/*.md` (deprecated) | 평문 markdown, `$1`-`$9`/`$ARGUMENTS` 치환 |
@@ -19,7 +19,7 @@
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
 | env 주입 | `config.toml` `[shell_environment_policy]` (`set` 테이블) | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
-| 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트 안내만 |
+| 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
 | 키바인딩 | `keybindings.json` | 명령 체계 상이 — 이관 불가, 안내만 |
 | 읽지 말 것 | `auth.json`, `sessions/`, `history.jsonl`, `*.sqlite`, `.codex-global-state.json` | security.md 적용 |

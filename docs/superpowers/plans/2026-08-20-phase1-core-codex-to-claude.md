@@ -447,7 +447,7 @@ git commit -m "feat: add security policy for secret handling and write safety"
 
 | 카테고리 | 위치 | 포맷 |
 |---|---|---|
-| 전역 규칙 | `AGENTS.md` (`AGENTS.override.md` 우선) | markdown, `@경로` import 지원 |
+| 전역 규칙 | `AGENTS.override.md` 가 있으면 **그것만** 읽고 `AGENTS.md` 는 완전히 무시. 없을 때만 `AGENTS.md` | markdown, `@경로` import 지원. 무시된 `AGENTS.md` 의 내용은 이관·병합은 물론 리포트에도 인용하지 않는다 |
 | MCP | `config.toml` `[mcp_servers.<name>]` | TOML. stdio: command/args/env. HTTP는 `url` 키 존재로 판별 (+선택: http_headers/bearer_token_env_var). `enabled=false`는 비활성 |
 | 스킬 | `skills/<name>/SKILL.md` | agent-skills 표준. 그대로 복사 가능 |
 | 커스텀 프롬프트 | `prompts/*.md` (deprecated) | 평문 markdown, `$1`-`$9`/`$ARGUMENTS` 치환 |
@@ -456,7 +456,7 @@ git commit -m "feat: add security policy for secret handling and write safety"
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
 | env 주입 | `config.toml` `[shell_environment_policy]` (`set` 테이블) | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
-| 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트 안내만 |
+| 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
 | 키바인딩 | `keybindings.json` | 명령 체계 상이 — 이관 불가, 안내만 |
 | 읽지 말 것 | `auth.json`, `sessions/`, `history.jsonl`, `*.sqlite`, `.codex-global-state.json` | security.md 적용 |
@@ -535,7 +535,7 @@ git commit -m "feat: add Codex tool knowledge doc (read/write/conversion rules)"
 
 | 카테고리 | 쓰기 위치 | 방법 |
 |---|---|---|
-| 전역 규칙 | `CLAUDE.md` | 파일 끝에 `## Migrated from <source> (<date>)` 섹션으로 병합. `@import` 줄은 원문 유지. 기존 내용 삭제 금지 |
+| 전역 규칙 | `CLAUDE.md` | 파일 끝에 `## Migrated from <source> (<date>)` 섹션으로 **원문 그대로** 병합(요약·재작성 금지). 소스의 `@import` 줄과 기존 파일의 `@import` 줄 모두 원문 유지. 기존 내용 삭제 금지. 수정 전 원본을 `.migrate/<run-id>/backup/CLAUDE.md` 로 복사 |
 | MCP | `claude mcp add` CLI | **`~/.claude.json` 직접 수정 금지** (공식 권고). stdio: `claude mcp add --scope user [--env KEY=VALUE ...] <name> -- <command> [args...]` — 서버 인자 앞 `--` 구분자 필수(인자가 `-y`처럼 대시로 시작하면 없을 때 오파싱). 예: `claude mcp add --scope user --env LOG_LEVEL=info everything -- npx -y @modelcontextprotocol/server-everything`. HTTP: `claude mcp add --scope user --transport http <name> <url> [--header "K: V"]`. env 값·헤더 값 모두 security.md 시크릿 탐지 대상 — 시크릿은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재 |
 | 스킬 | `skills/<name>/SKILL.md` | 디렉토리째 복사. 동명 스킬 존재 시 건너뛰고 리포트에 기록 |
 | 커맨드 | `commands/<name>.md` | 평문 markdown. `$1`-`$9`/`$ARGUMENTS` 치환 지원 — 소스의 치환 토큰 원문 유지 |
@@ -627,7 +627,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `
 1. `.migrate/<run-id>/backup/` 생성, 수정 대상 기존 파일 전부 백업.
 2. 원장 확인: `<타겟 루트>/.migrate/ledger.json` 에서 소스 파일의 sha256이 이미 기록돼 있으면 해당 항목은 건너뛰고 리포트에 "이미 이관됨"으로 기록 (재실행 안전).
 3. 타겟 문서의 쓰기 규칙대로 카테고리별 변환·병합 실행.
-4. 원장 갱신: `{ "<소스 절대경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 항목 추가.
+4. 원장 갱신: `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 항목 추가. 키는 이번 실행에서 사용한 소스 루트를 절대 경로로 해석한 값이다(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
 
 쓰기 실패(JSON 파싱 오류 등) 시: 해당 파일을 백업에서 복원하고, 남은 카테고리를 중단하고, 리포트에 실패 지점을 기록한다.
 
@@ -650,7 +650,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `
 ## 이관하지 않음
 - <항목> (<소스 파일 경로>): <사유> (비활성 서버·키바인딩·세션·auth 등)
 
-각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다.
+각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다. 이관하지 않은 설정값(모델명 등)은 **현재 값을 그대로 인용**한다 — 범주만 적고 값을 생략하지 않는다. 승인/샌드박스 정책 제안에는 소스의 필드명(`approval_policy`, `sandbox_mode`)과 대응하는 타겟 개념명을 함께 적는다.
 
 ## 검증
 - <실행한 확인 명령과 결과>
