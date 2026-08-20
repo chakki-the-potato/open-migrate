@@ -41,10 +41,12 @@ test/
 **Files:**
 - Create: `.gitignore`
 - Create: `test/fixtures/codex-home/config.toml`
-- Create: `test/fixtures/codex-home/AGENTS.md`
+- Create: `test/fixtures/codex-home/AGENTS.md` (디코이 — 이관되면 안 됨)
+- Create: `test/fixtures/codex-home/AGENTS.override.md` (실제 이관 대상)
 - Create: `test/fixtures/codex-home/hooks.json`
 - Create: `test/fixtures/codex-home/rules/default.rules`
 - Create: `test/fixtures/codex-home/skills/hello/SKILL.md`
+- Create: `test/fixtures/codex-home/skills/hello/reference/tone.md`
 - Create: `test/fixtures/codex-home/prompts/greet.md`
 - Create: `test/fixtures/codex-home/agents/reviewer.toml`
 - Create: `test/fixtures/codex-home/keybindings.json`
@@ -98,9 +100,19 @@ enabled = false
 trust_level = "trusted"
 ```
 
-- [ ] **Step 3: AGENTS.md 작성**
+- [ ] **Step 3: AGENTS.md (디코이) + AGENTS.override.md (실제 대상) 작성**
+
+Codex는 `AGENTS.override.md` 가 있으면 그것을 읽고 `AGENTS.md` 는 무시한다. 프리시던스를 무시하는 마이그레이션을 잡기 위해 디코이를 둔다.
 
 `test/fixtures/codex-home/AGENTS.md`:
+
+```markdown
+# Global Rules (overridden)
+
+- OVERRIDDEN-DECOY must never reach the target.
+```
+
+`test/fixtures/codex-home/AGENTS.override.md`:
 
 ```markdown
 # Global Rules
@@ -160,6 +172,12 @@ description: Say hello with project context
 ---
 
 Say hello and summarize the current project in one sentence.
+```
+
+`test/fixtures/codex-home/skills/hello/reference/tone.md` (지원 파일 — 디렉토리 전체 복사 검증용):
+
+```markdown
+Keep the greeting under two sentences.
 ```
 
 `test/fixtures/codex-home/prompts/greet.md` (deprecated 커스텀 프롬프트 — 커맨드 변환 검증용):
@@ -223,6 +241,7 @@ chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
 chk "CLAUDE.md keeps existing content" grep -q "Keep me." "$TARGET/CLAUDE.md"
 chk "CLAUDE.md has migrated rule"      grep -q "Answer in Korean." "$TARGET/CLAUDE.md"
 chk "CLAUDE.md preserves import line"  grep -q "@~/.agent-rules-fixture.md" "$TARGET/CLAUDE.md"
+chk_not "AGENTS.override precedence"   grep -rq "OVERRIDDEN-DECOY" "$TARGET"
 
 # settings.json 병합
 chk "settings.json valid JSON"         jq -e . "$TARGET/settings.json"
@@ -240,6 +259,7 @@ chk_not "defaultMode not auto-applied" jq -e '.permissions.defaultMode' "$TARGET
 # 스킬·커맨드·에이전트
 chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
 chk "skill content identical"          grep -q "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
+chk "skill supporting file copied"     test -f "$TARGET/skills/hello/reference/tone.md"
 chk "prompt converted to command"      test -f "$TARGET/commands/greet.md"
 chk "command keeps ARGUMENTS token"    grep -q '\$ARGUMENTS' "$TARGET/commands/greet.md"
 chk "agent converted to md"            test -f "$TARGET/agents/reviewer.md"
@@ -254,10 +274,11 @@ chk "report: keybindings non-migratable" grep -qi "keybinding" "${mig_dir}REPORT
 chk "report: disabled server noted"    grep -q "disabled_one" "${mig_dir}REPORT.md"
 chk "report: secret re-entry listed"   grep -q "X-API-Key" "${mig_dir}REPORT.md"
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp add: everything"              grep -q 'claude mcp add.*everything' "${mig_dir}mcp-commands.sh"
+chk "mcp add: everything by name"      grep -qE 'claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]' "${mig_dir}mcp-commands.sh"
 chk "mcp add: env carried"             grep -q -- '--env LOG_LEVEL=info' "${mig_dir}mcp-commands.sh"
 chk "mcp add: args separator used"     grep -q -- ' -- npx' "${mig_dir}mcp-commands.sh"
 chk "mcp add: secretsvc present"       grep -q 'secretsvc' "${mig_dir}mcp-commands.sh"
+chk_not "disabled server not added"    grep -q 'disabled_one' "${mig_dir}mcp-commands.sh"
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
 chk "backup of pre-existing settings"  test -f "${mig_dir}backup/settings.json"
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
@@ -801,3 +822,10 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - 자동 감지 모드: SKILL.md에 포함(Task 8). 플러그인 패키징은 Phase 5 — 제외.
 - 타입/이름 일관성: run-id 형식, `.migrate/<run-id>/` 경로, `ledger.json` 위치(`<타겟>/.migrate/ledger.json`), `<REDACTED-REENTER>` 문자열, 리포트 섹션명이 Task 2(검증기)·3·5·6 간 일치함을 확인.
 - 교차 리뷰(3-way 워크플로) 지적 16건 반영 완료: 비공식 훅 이벤트 규칙, prompts 카테고리, `claude mcp add`의 `--`·`--env`, 픽스처 `type="http"` 제거, ask 케이스, defaultMode 부정 검증, 재설치 루프, 소스 루트 오버라이드, 절대 경로, Write 도구 노트, 원장 재실행 검증 등.
+- Task 1 코드 품질 리뷰 반영: `AGENTS.override.md` 프리시던스 디코이, 스킬 지원 파일(`reference/tone.md`), `everything` 서버명 앵커 매칭(패키지명 부분 일치로 오통과 방지), 비활성 서버 부정 검증 추가.
+
+## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
+
+- `prompts/*.md` 의 `description`/`argument-hint` frontmatter 이관 경로 미검증.
+- `config.toml` 인라인 `[[hooks.Event]]` 훅 소스(두 번째 훅 위치) 미검증.
+- 공백·점 포함 MCP 서버명(`[mcp_servers."my server"]`) TOML quoting 경로 미검증.
