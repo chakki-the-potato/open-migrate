@@ -229,6 +229,7 @@ git commit -m "test: add synthetic codex-home fixture with planted fake secrets"
 
 ```bash
 #!/usr/bin/env bash
+# set -e 는 의도적으로 쓰지 않는다 — 개별 체크가 실패해도 전부 끝까지 돌려 한 번에 진단한다.
 set -uo pipefail
 TARGET="${1:?usage: verify-migration.sh <target-root>}"
 fail=0
@@ -236,69 +237,122 @@ fail=0
 chk() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "PASS: $d"; else echo "FAIL: $d"; fail=1; fi; }
 chk_not() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "FAIL: $d"; fail=1; else echo "PASS: $d"; fi; }
 
-# 규칙 병합 (기존 보존 + 이관 + import 유지)
-chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
-chk "CLAUDE.md keeps existing content" grep -q "Keep me." "$TARGET/CLAUDE.md"
-chk "CLAUDE.md has migrated rule"      grep -q "Answer in Korean." "$TARGET/CLAUDE.md"
-chk "CLAUDE.md preserves import line"  grep -q "@~/.agent-rules-fixture.md" "$TARGET/CLAUDE.md"
-chk_not "AGENTS.override precedence"   grep -rq "OVERRIDDEN-DECOY" "$TARGET"
+if [ ! -d "$TARGET" ]; then
+  echo "ERROR: target root not found: $TARGET"
+  exit 1
+fi
 
-# settings.json 병합
+mig_dir="$(ls -d "$TARGET/.migrate/"*/ 2>/dev/null | sort | tail -1)"
+if [ -z "$mig_dir" ]; then
+  echo "ERROR: no .migrate/<run-id>/ directory under $TARGET — every run-output check below fails for this one reason"
+  mig_dir="$TARGET/.migrate/__missing__/"
+fi
+
+# 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
+chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
+chk "CLAUDE.md keeps existing content" grep -qF "Keep me." "$TARGET/CLAUDE.md"
+chk "CLAUDE.md migrated rule 1"        grep -qF "Answer in Korean." "$TARGET/CLAUDE.md"
+chk "CLAUDE.md migrated rule 2"        grep -qF "Never commit secrets." "$TARGET/CLAUDE.md"
+chk "CLAUDE.md preserves import line"  grep -qF "@~/.agent-rules-fixture.md" "$TARGET/CLAUDE.md"
+chk_not "AGENTS.override precedence"   grep -rqF "OVERRIDDEN-DECOY" "$TARGET"
+
+# settings.json — 기존 보존(deep merge) 검증
 chk "settings.json valid JSON"         jq -e . "$TARGET/settings.json"
 chk "existing model preserved"         jq -e '.model == "claude-fable-5"' "$TARGET/settings.json"
-chk "hook matcher converted"           jq -e '.hooks.PreToolUse[0].matcher == "Edit|Write"' "$TARGET/settings.json"
-chk "notification hook migrated"       jq -e '.hooks.Notification | length >= 1' "$TARGET/settings.json"
+chk "existing env key preserved"       jq -e '.env.EXISTING_KEY == "keep"' "$TARGET/settings.json"
+chk "existing allow rule preserved"    jq -e '.permissions.allow | index("Bash(ls:*)") != null' "$TARGET/settings.json"
+chk "existing hook preserved"          jq -e '[.hooks.PreToolUse[].matcher] | index("Read") != null' "$TARGET/settings.json"
+
+# settings.json — 훅 이관 (matcher + command 본문 + timeout)
+chk "hook matcher converted"           jq -e '[.hooks.PreToolUse[].matcher] | index("Edit|Write") != null' "$TARGET/settings.json"
+chk "hook command body carried"        jq -e '[.hooks.PreToolUse[].hooks[].command] | index("echo pre-edit-check") != null' "$TARGET/settings.json"
+chk "hook timeout carried"             jq -e '[.hooks.PreToolUse[].hooks[].timeout] | index(10) != null' "$TARGET/settings.json"
+chk "notification hook migrated"       jq -e '[.hooks.Notification[].hooks[].command] | index("echo notify") != null' "$TARGET/settings.json"
+
+# settings.json — env 주입
 chk "env injected"                     jq -e '.env.FIXTURE_FLAG == "1"' "$TARGET/settings.json"
+
+# settings.json — 권한 (정답 리스트 존재 + 오답 리스트 부재)
 chk "allow: git status"                jq -e '.permissions.allow | index("Bash(git status:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run build"             jq -e '.permissions.allow | index("Bash(npm run build:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run test"              jq -e '.permissions.allow | index("Bash(npm run test:*)") != null' "$TARGET/settings.json"
 chk "ask: git push"                    jq -e '.permissions.ask | index("Bash(git push:*)") != null' "$TARGET/settings.json"
 chk "deny: rm"                         jq -e '.permissions.deny | index("Bash(rm:*)") != null' "$TARGET/settings.json"
+chk_not "git status not also denied"   jq -e '.permissions.deny | index("Bash(git status:*)") != null' "$TARGET/settings.json"
+chk_not "git push not also allowed"    jq -e '.permissions.allow | index("Bash(git push:*)") != null' "$TARGET/settings.json"
+chk_not "rm not also allowed"          jq -e '.permissions.allow | index("Bash(rm:*)") != null' "$TARGET/settings.json"
 chk_not "defaultMode not auto-applied" jq -e '.permissions.defaultMode' "$TARGET/settings.json"
 
-# 스킬·커맨드·에이전트
+# 스킬·커맨드·서브에이전트 (존재 + 내용)
 chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
-chk "skill content identical"          grep -q "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
+chk "skill content identical"          grep -qF "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
 chk "skill supporting file copied"     test -f "$TARGET/skills/hello/reference/tone.md"
+chk "skill supporting file content"    grep -qF "Keep the greeting under two sentences." "$TARGET/skills/hello/reference/tone.md"
 chk "prompt converted to command"      test -f "$TARGET/commands/greet.md"
-chk "command keeps ARGUMENTS token"    grep -q '\$ARGUMENTS' "$TARGET/commands/greet.md"
+chk "command keeps ARGUMENTS token"    grep -qF '$ARGUMENTS' "$TARGET/commands/greet.md"
+chk "command body carried over"        grep -qF "warmly and mention today" "$TARGET/commands/greet.md"
 chk "agent converted to md"            test -f "$TARGET/agents/reviewer.md"
 chk "agent frontmatter name"           grep -q "^name: reviewer" "$TARGET/agents/reviewer.md"
-chk "agent body carried over"          grep -q "strict code reviewer" "$TARGET/agents/reviewer.md"
+chk "agent description carried"        grep -qF "Reviews diffs for style violations" "$TARGET/agents/reviewer.md"
+chk "agent body carried over"          grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
-# .migrate 산출물 (백업·리포트·MCP 명령·원장)
-mig_dir="$(ls -d "$TARGET/.migrate/"*/ 2>/dev/null | head -1)"
-chk "migrate run dir exists"           test -n "$mig_dir"
+# 리포트
 chk "report exists"                    test -f "${mig_dir}REPORT.md"
 chk "report: keybindings non-migratable" grep -qi "keybinding" "${mig_dir}REPORT.md"
-chk "report: disabled server noted"    grep -q "disabled_one" "${mig_dir}REPORT.md"
-chk "report: secret re-entry listed"   grep -q "X-API-Key" "${mig_dir}REPORT.md"
+chk "report: source model noted"       grep -qF "gpt-5.6-sol" "${mig_dir}REPORT.md"
+chk "report: disabled server noted"    grep -qF "disabled_one" "${mig_dir}REPORT.md"
+chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md"
+chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
+
+# MCP 등록 명령 (payload까지)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
 chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "${mig_dir}mcp-commands.sh"
-chk "mcp add: env carried"             grep -q -- '--env LOG_LEVEL=info' "${mig_dir}mcp-commands.sh"
-chk "mcp add: args separator used"     grep -q -- ' -- npx' "${mig_dir}mcp-commands.sh"
-chk "mcp add: secretsvc present"       grep -q 'secretsvc' "${mig_dir}mcp-commands.sh"
-chk_not "disabled server not added"    grep -q 'disabled_one' "${mig_dir}mcp-commands.sh"
+chk "mcp add: env carried"             grep -qE -- '--env[[:space:]]+"?LOG_LEVEL=info"?' "${mig_dir}mcp-commands.sh"
+chk "mcp add: args separator used"     grep -qE -- '[[:space:]]--[[:space:]]+npx' "${mig_dir}mcp-commands.sh"
+chk "mcp add: stdio package arg"       grep -qF "@modelcontextprotocol/server-everything" "${mig_dir}mcp-commands.sh"
+chk "mcp add: secretsvc registered"    grep -qE 'claude mcp add.*secretsvc' "${mig_dir}mcp-commands.sh"
+chk "mcp add: http transport"          grep -qE -- '--transport[[:space:]]+http' "${mig_dir}mcp-commands.sh"
+chk "mcp add: http url"                grep -qF "https://example.com/mcp" "${mig_dir}mcp-commands.sh"
+chk_not "disabled server not added"    grep -qF 'disabled_one' "${mig_dir}mcp-commands.sh"
+
+# 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
+chk "backup CLAUDE.md is the original" grep -qF "Keep me." "${mig_dir}backup/CLAUDE.md"
 chk "backup of pre-existing settings"  test -f "${mig_dir}backup/settings.json"
+chk "backup settings is the original"  jq -e '.model == "claude-fable-5"' "${mig_dir}backup/settings.json"
+
+# 원장 (존재 + 유효 + sha256 기록)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
+chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
+chk "ledger records a sha256"          jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | length >= 1' "$TARGET/.migrate/ledger.json"
 
 # 시크릿 불가침
-chk_not "no MCP secret leaked"         grep -rq "FAKE-SECRET-123" "$TARGET"
-chk_not "auth.json never copied"       grep -rq "AUTH-FAKE-SECRET" "$TARGET"
+chk_not "no MCP secret leaked"         grep -rqF "FAKE-SECRET-123" "$TARGET"
+chk_not "auth.json never copied"       grep -rqF "AUTH-FAKE-SECRET" "$TARGET"
 
 exit $fail
 ```
 
 - [ ] **Step 2: 실행 권한 부여 후 실패 확인**
 
+Task 9 Step 1 의 타겟 준비(사전-존재 설정 포함)를 먼저 만든 뒤 실행한다.
+
 ```bash
 chmod +x scripts/verify-migration.sh
-mkdir -p test/tmp/claude-target
-./scripts/verify-migration.sh test/tmp/claude-target
+./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target"
 ```
 
-Expected: 다수 FAIL 출력, exit code 1 (아직 이관 산출물이 없으므로).
+Expected: PASS 15 / FAIL 45, exit code 1. PASS 15개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
+
+- [ ] **Step 2b: 긍정 경로 증명 (필수)**
+
+"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 60개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
+
+```bash
+./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target"
+```
+
+Expected: PASS 60 / FAIL 0, exit code 0.
 
 - [ ] **Step 3: Commit**
 
@@ -747,11 +801,24 @@ git commit -m "feat: add Claude entry-point skill and installer"
 
 - [ ] **Step 1: 격리 타겟 준비 (기존 설정이 있는 상황 시뮬레이션)**
 
+기존 규칙·훅·권한·env 가 이미 있는 상태를 만들어야 한다. 그래야 "덮어쓰기 대신 병합" 규칙이 실제로 검증된다.
+
 ```bash
 rm -rf test/tmp/claude-target
 mkdir -p test/tmp/claude-target
 printf '# Existing\n\nKeep me.\n' > test/tmp/claude-target/CLAUDE.md
-printf '{ "model": "claude-fable-5" }\n' > test/tmp/claude-target/settings.json
+cat > test/tmp/claude-target/settings.json <<'JSON'
+{
+  "model": "claude-fable-5",
+  "env": { "EXISTING_KEY": "keep" },
+  "permissions": { "allow": ["Bash(ls:*)"], "deny": [] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Read", "hooks": [ { "type": "command", "command": "echo existing-pre" } ] }
+    ]
+  }
+}
+JSON
 ```
 
 - [ ] **Step 2: 스킬 절차대로 이관 실행**
@@ -824,6 +891,8 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - 교차 리뷰(3-way 워크플로) 지적 16건 반영 완료: 비공식 훅 이벤트 규칙, prompts 카테고리, `claude mcp add`의 `--`·`--env`, 픽스처 `type="http"` 제거, ask 케이스, defaultMode 부정 검증, 재설치 루프, 소스 루트 오버라이드, 절대 경로, Write 도구 노트, 원장 재실행 검증 등.
 - Task 1 코드 품질 리뷰 반영: `AGENTS.override.md` 프리시던스 디코이, 스킬 지원 파일(`reference/tone.md`), `everything` 서버명 정밀 매칭(패키지명 부분 일치로 오통과 방지), 비활성 서버 부정 검증 추가.
 - `mcp add: everything by name` 패턴 확정 경위: 1차 앵커안 `claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]` 은 "이름 바로 뒤에 `--`" 를 요구해 토큰 순서에 결합되는 문제가 있었다. `claude mcp add` 는 플래그를 이름 앞(`--env ... everything --`)에도 뒤(`everything --env ... --`)에도 둘 수 있어 이 앵커는 후자에서 거짓 실패한다. 최종안 `(^|[[:space:]])everything([[:space:]]|$)` 은 서버명을 공백 구분 독립 토큰으로만 매칭하므로 순서에 무관하고, 패키지명 `server-everything`(앞이 `-`)은 여전히 배제한다.
+
+- Task 2 코드 품질 리뷰 반영(체크 40→60): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 
