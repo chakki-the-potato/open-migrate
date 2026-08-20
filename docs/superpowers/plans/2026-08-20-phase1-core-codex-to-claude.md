@@ -248,6 +248,10 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
+mcp_exec="$(mktemp)"
+trap 'rm -f "$mcp_exec"' EXIT
+grep -vE '^[[:space:]]*#' "${mig_dir}mcp-commands.sh" > "$mcp_exec" 2>/dev/null || true
+
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
 chk "CLAUDE.md keeps existing content" grep -qF "Keep me." "$TARGET/CLAUDE.md"
@@ -265,8 +269,8 @@ chk "existing hook preserved"          jq -e '[.hooks.PreToolUse[].matcher] | in
 
 # settings.json — 훅 이관 (matcher + command 본문 + timeout)
 chk "hook matcher converted"           jq -e '[.hooks.PreToolUse[].matcher] | index("Edit|Write") != null' "$TARGET/settings.json"
-chk "hook command body carried"        jq -e '[.hooks.PreToolUse[].hooks[].command] | index("echo pre-edit-check") != null' "$TARGET/settings.json"
-chk "hook timeout carried"             jq -e '[.hooks.PreToolUse[].hooks[].timeout] | index(10) != null' "$TARGET/settings.json"
+chk "hook body paired with matcher"    jq -e '.hooks.PreToolUse | map(select(.matcher == "Edit|Write")) | .[0].hooks | map(select(.command == "echo pre-edit-check" and .timeout == 10)) | length >= 1' "$TARGET/settings.json"
+chk "existing hook body preserved"     jq -e '.hooks.PreToolUse | map(select(.matcher == "Read")) | .[0].hooks | map(select(.command == "echo existing-pre")) | length >= 1' "$TARGET/settings.json"
 chk "notification hook migrated"       jq -e '[.hooks.Notification[].hooks[].command] | index("echo notify") != null' "$TARGET/settings.json"
 
 # settings.json — env 주입
@@ -281,6 +285,7 @@ chk "deny: rm"                         jq -e '.permissions.deny | index("Bash(rm
 chk_not "git status not also denied"   jq -e '.permissions.deny | index("Bash(git status:*)") != null' "$TARGET/settings.json"
 chk_not "git push not also allowed"    jq -e '.permissions.allow | index("Bash(git push:*)") != null' "$TARGET/settings.json"
 chk_not "rm not also allowed"          jq -e '.permissions.allow | index("Bash(rm:*)") != null' "$TARGET/settings.json"
+chk "permissions: each rule in exactly one list" jq -e '[.permissions.allow[]?, .permissions.ask[]?, .permissions.deny[]?] as $a | ($a|length) == ($a|unique|length)' "$TARGET/settings.json"
 chk_not "defaultMode not auto-applied" jq -e '.permissions.defaultMode' "$TARGET/settings.json"
 
 # 스킬·커맨드·서브에이전트 (존재 + 내용)
@@ -306,14 +311,16 @@ chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|d
 
 # MCP 등록 명령 (payload까지)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "${mig_dir}mcp-commands.sh"
-chk "mcp add: env carried"             grep -qE -- '--env[[:space:]]+"?LOG_LEVEL=info"?' "${mig_dir}mcp-commands.sh"
-chk "mcp add: args separator used"     grep -qE -- '[[:space:]]--[[:space:]]+npx' "${mig_dir}mcp-commands.sh"
-chk "mcp add: stdio package arg"       grep -qF "@modelcontextprotocol/server-everything" "${mig_dir}mcp-commands.sh"
-chk "mcp add: secretsvc registered"    grep -qE 'claude mcp add.*secretsvc' "${mig_dir}mcp-commands.sh"
-chk "mcp add: http transport"          grep -qE -- '--transport[[:space:]]+http' "${mig_dir}mcp-commands.sh"
-chk "mcp add: http url"                grep -qF "https://example.com/mcp" "${mig_dir}mcp-commands.sh"
-chk_not "disabled server not added"    grep -qF 'disabled_one' "${mig_dir}mcp-commands.sh"
+chk "mcp add: everything by name"      grep -qE '(^|[[:space:]])everything([[:space:]]|$)' "$mcp_exec"
+chk "mcp add: env carried"             grep -qE -- '--env[[:space:]]+"?LOG_LEVEL=info"?' "$mcp_exec"
+chk "mcp add: args separator used"     grep -qE -- '[[:space:]]--[[:space:]]+npx' "$mcp_exec"
+chk "mcp add: stdio package arg"       grep -qF "@modelcontextprotocol/server-everything" "$mcp_exec"
+chk "mcp add: secretsvc registered"    grep -qE 'claude mcp add.*secretsvc' "$mcp_exec"
+chk "mcp add: http transport"          grep -qE -- '--transport[[:space:]]+http' "$mcp_exec"
+chk "mcp add: http url"                grep -qF "https://example.com/mcp" "$mcp_exec"
+chk "mcp add: everything one line"     awk '/claude mcp add/ && /(^|[ \t])everything([ \t]|$)/ && /LOG_LEVEL=info/ && /server-everything/ {f=1} END{exit !f}' "$mcp_exec"
+chk "mcp add: secretsvc one line"      awk '/claude mcp add/ && /secretsvc/ && /--transport[ \t]+http/ && /example\.com\/mcp/ {f=1} END{exit !f}' "$mcp_exec"
+chk_not "disabled server not added"    grep -qF 'disabled_one' "$mcp_exec"
 
 # 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
@@ -324,7 +331,7 @@ chk "backup settings is the original"  jq -e '.model == "claude-fable-5"' "${mig
 # 원장 (존재 + 유효 + sha256 기록)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
 chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
-chk "ledger records a sha256"          jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | length >= 1' "$TARGET/.migrate/ledger.json"
+chk "ledger records source hashes"     jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | unique | length >= 5' "$TARGET/.migrate/ledger.json"
 
 # 시크릿 불가침
 chk_not "no MCP secret leaked"         grep -rqF "FAKE-SECRET-123" "$TARGET"
@@ -342,17 +349,17 @@ chmod +x scripts/verify-migration.sh
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/claude-target"
 ```
 
-Expected: PASS 15 / FAIL 45, exit code 1. PASS 15개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
+Expected: PASS 17 / FAIL 46, exit code 1. PASS 17개는 "기존 항목 보존" 계열과 아직 오염되지 않았음을 확인하는 `chk_not` 계열뿐 — 이관 산출물 관련 체크는 전부 FAIL이어야 정상이다.
 
 - [ ] **Step 2b: 긍정 경로 증명 (필수)**
 
-"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 60개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
+"빈/사전 상태에서 FAIL"만으로는 항상 실패하는 망가진 체크를 가려낼 수 없다. `test/tmp/fake-pass-target/` 에 "이관이 성공했을 때 나와야 할 산출물"을 손으로 만들어 전 63개 체크 PASS·exit 0 을 실증한다. `ledger.json` 의 sha256 은 실제 소스 파일의 `shasum -a 256` 실측값이어야 하고, `mcp-commands.sh` 는 실행 가능한 실제 명령이어야 한다.
 
 ```bash
 ./scripts/verify-migration.sh "$(pwd)/test/tmp/fake-pass-target"
 ```
 
-Expected: PASS 60 / FAIL 0, exit code 0.
+Expected: PASS 63 / FAIL 0, exit code 0.
 
 - [ ] **Step 3: Commit**
 
