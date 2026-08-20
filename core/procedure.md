@@ -1,0 +1,77 @@
+# Migration Procedure (5단계 — 순서 엄수)
+
+실행 전 제자리 확인: 소스 도구 문서(`core/tools/<source>.md`), 타겟 도구 문서(`core/tools/<target>.md`), `core/security.md` 를 모두 읽었는가. 하나라도 안 읽었으면 지금 읽는다.
+
+run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `<타겟 루트>/.migrate/<run-id>/`.
+
+## 카테고리 체크리스트 (매 실행마다 전부 순회)
+
+1. 전역 규칙  2. MCP 서버  3. 스킬  4. 서브에이전트  5. 훅
+6. 권한 규칙  7. env 주입  8. 승인/샌드박스 정책  9. 이관 불가 항목(키바인딩·세션·auth·모델 등)
+
+## Step 1: Scan
+
+- 소스 문서의 인벤토리 표를 따라 각 카테고리의 파일 존재·내용을 조사한다.
+- security.md의 접근 금지 파일은 존재만 기록한다.
+- 카테고리별로 발견 항목 수를 센다(없으면 0으로 기록 — 침묵 금지).
+
+## Step 2: Plan
+
+카테고리별로 다음 3분류로 나눈 계획표를 만든다.
+- **자동**: 무손실 변환 가능 (변환 결과 미리보기 포함)
+- **근사**: 의미 손실 있는 변환 (무엇이 손실되는지 명시)
+- **불가**: 이관 불가 (사유 + 수동 조치 방법)
+
+시크릿이 탐지된 항목은 계획표에 `<REDACTED-REENTER>` 로 표시한다.
+
+## Step 3: Confirm
+
+- 계획표를 사용자에게 제시하고 승인을 받는다. 카테고리 단위 제외를 허용한다.
+- 타겟에 이미 존재해 충돌하는 항목(동명 스킬, 값이 다른 env 키 등)은 여기서 개별 확인한다.
+- **승인 전에는 어떤 파일도 쓰지 않는다.** 사용자가 중단하면 계획표만 남기고 종료한다.
+
+## Step 4: Apply
+
+승인된 카테고리만, 다음 순서로 처리한다.
+
+1. `.migrate/<run-id>/backup/` 생성, 수정 대상 기존 파일 전부 백업.
+2. 원장 확인: `<타겟 루트>/.migrate/ledger.json` 에서 소스 파일의 sha256이 이미 기록돼 있으면 해당 항목은 건너뛰고 리포트에 "이미 이관됨"으로 기록 (재실행 안전).
+3. 타겟 문서의 쓰기 규칙대로 카테고리별 변환·병합 실행.
+4. 원장 갱신: `{ "<소스 절대경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 항목 추가.
+
+쓰기 실패(JSON 파싱 오류 등) 시: 해당 파일을 백업에서 복원하고, 남은 카테고리를 중단하고, 리포트에 실패 지점을 기록한다.
+
+## Step 5: Report
+
+`.migrate/<run-id>/REPORT.md` 를 작성하고 같은 내용을 사용자에게 요약 출력한다. 형식:
+
+```markdown
+# Migration Report: <source> → <target> (<run-id>)
+
+## 이관 완료 (자동)
+- <카테고리>: <항목> → <타겟 위치>
+
+## 근사 매핑 (확인 권장)
+- <항목>: <무엇이 어떻게 근사되었는지>
+
+## 수동 조치 필요
+- <항목> (<소스 파일 경로>): <사용자가 해야 할 일> (시크릿 재입력 항목은 키 이름·위치만)
+
+## 이관하지 않음
+- <항목> (<소스 파일 경로>): <사유> (비활성 서버·키바인딩·세션·auth 등)
+
+각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다.
+
+## 검증
+- <실행한 확인 명령과 결과>
+```
+
+리포트에는 시크릿 원문을 절대 쓰지 않는다(security.md).
+
+## 승인/샌드박스 정책 근사 매핑표 (참고용 — 자동 적용 금지, 항상 제안만)
+
+| Codex approval_policy + sandbox | Claude defaultMode | Cursor approvalMode | Grok permission_mode |
+|---|---|---|---|
+| untrusted / read-only | default | allowlist | default(ask) |
+| on-request / workspace-write | acceptEdits | allowlist | acceptEdits |
+| never / danger-full-access | bypassPermissions | unrestricted | bypassPermissions |
