@@ -17,7 +17,7 @@
 | 훅 | `hooks.json` 또는 `config.toml` `[[hooks.Event]]` | Claude와 동일 JSON 구조 |
 | 권한 규칙 | `rules/*.rules` | Starlark `prefix_rule(pattern=[...], decision=...)` |
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
-| env 주입 | `config.toml` `[shell_environment_policy]` (`set` 테이블) | TOML |
+| env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 Claude 에 등가물 없음 → 리포트에 이관 불가로 기록 | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
 | 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |

@@ -14,7 +14,7 @@
 | MCP | `claude mcp add` CLI | **`~/.claude.json` 직접 수정 금지** (공식 권고). stdio: `claude mcp add --scope user [--env KEY=VALUE ...] <name> -- <command> [args...]` — 서버 인자 앞 `--` 구분자 필수(인자가 `-y`처럼 대시로 시작하면 없을 때 오파싱). 예: `claude mcp add --scope user --env LOG_LEVEL=info everything -- npx -y @modelcontextprotocol/server-everything`. HTTP: `claude mcp add --scope user --transport http <name> <url> [--header "K: V"]`. env 값·헤더 값 모두 security.md 시크릿 탐지 대상 — 시크릿은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재 |
 | 스킬 | `skills/<name>/SKILL.md` | 디렉토리째 복사. 동명 스킬 존재 시 건너뛰고 리포트에 기록 |
 | 커맨드 | `commands/<name>.md` | 평문 markdown. `$1`-`$9`/`$ARGUMENTS` 치환 지원 — 소스의 치환 토큰 원문 유지 |
-| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 중복이면 스킵. 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 등 Claude 확장 이벤트 (동명이면 그대로 수용) |
+| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 중복이면 스킵. 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 같은 Claude 확장 이벤트(동명이면 그대로 수용). 이 목록에 없는 이벤트명은 Claude 공식 훅 이벤트인지 확인하고, 확인되지 않으면 드롭한 뒤 리포트에 기록한다 |
 | 권한 | `settings.json`의 `permissions.allow` / `deny` / `ask` | 배열에 append, 중복 제거. 공식 문서는 세션 내 `/permissions` 사용을 권하지만, 일괄 마이그레이션에서는 백업+jq 검증+실패 시 복원을 전제로 직접 병합한다(의도된 이탈). `defaultMode`는 절대 자동 설정하지 않음 — 근사 매핑표는 제안으로만 리포트에 기재 |
 | env | `settings.json`의 `env` 객체 | 키 단위 병합. 기존 키와 값이 다르면 충돌 — 사용자에게 질문 |
 | 서브에이전트 | `agents/<name>.md` | frontmatter: name, description. 본문 = 시스템 프롬프트 |

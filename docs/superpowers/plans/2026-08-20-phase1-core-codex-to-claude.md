@@ -454,7 +454,7 @@ git commit -m "feat: add security policy for secret handling and write safety"
 | 훅 | `hooks.json` 또는 `config.toml` `[[hooks.Event]]` | Claude와 동일 JSON 구조 |
 | 권한 규칙 | `rules/*.rules` | Starlark `prefix_rule(pattern=[...], decision=...)` |
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
-| env 주입 | `config.toml` `[shell_environment_policy]` (`set` 테이블) | TOML |
+| env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 Claude 에 등가물 없음 → 리포트에 이관 불가로 기록 | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
 | 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
@@ -539,7 +539,7 @@ git commit -m "feat: add Codex tool knowledge doc (read/write/conversion rules)"
 | MCP | `claude mcp add` CLI | **`~/.claude.json` 직접 수정 금지** (공식 권고). stdio: `claude mcp add --scope user [--env KEY=VALUE ...] <name> -- <command> [args...]` — 서버 인자 앞 `--` 구분자 필수(인자가 `-y`처럼 대시로 시작하면 없을 때 오파싱). 예: `claude mcp add --scope user --env LOG_LEVEL=info everything -- npx -y @modelcontextprotocol/server-everything`. HTTP: `claude mcp add --scope user --transport http <name> <url> [--header "K: V"]`. env 값·헤더 값 모두 security.md 시크릿 탐지 대상 — 시크릿은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재 |
 | 스킬 | `skills/<name>/SKILL.md` | 디렉토리째 복사. 동명 스킬 존재 시 건너뛰고 리포트에 기록 |
 | 커맨드 | `commands/<name>.md` | 평문 markdown. `$1`-`$9`/`$ARGUMENTS` 치환 지원 — 소스의 치환 토큰 원문 유지 |
-| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 중복이면 스킵. 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 등 Claude 확장 이벤트 (동명이면 그대로 수용) |
+| 훅 | `settings.json`의 `hooks` 키 | 구조: `{Event: [{matcher, hooks: [{type:"command", command, timeout}]}]}`. 기존 훅 배열에 append — 동일 command 중복이면 스킵. 유효 이벤트: 소스 도구의 11개 공통 이벤트 전부 + Notification, PermissionDenied, PostToolUseFailure, ConfigChange, WorktreeCreate 같은 Claude 확장 이벤트(동명이면 그대로 수용). 이 목록에 없는 이벤트명은 Claude 공식 훅 이벤트인지 확인하고, 확인되지 않으면 드롭한 뒤 리포트에 기록한다 |
 | 권한 | `settings.json`의 `permissions.allow` / `deny` / `ask` | 배열에 append, 중복 제거. 공식 문서는 세션 내 `/permissions` 사용을 권하지만, 일괄 마이그레이션에서는 백업+jq 검증+실패 시 복원을 전제로 직접 병합한다(의도된 이탈). `defaultMode`는 절대 자동 설정하지 않음 — 근사 매핑표는 제안으로만 리포트에 기재 |
 | env | `settings.json`의 `env` 객체 | 키 단위 병합. 기존 키와 값이 다르면 충돌 — 사용자에게 질문 |
 | 서브에이전트 | `agents/<name>.md` | frontmatter: name, description. 본문 = 시스템 프롬프트 |
@@ -592,12 +592,14 @@ git commit -m "feat: add Claude tool knowledge doc (write/merge/read rules)"
 
 실행 전 제자리 확인: 소스 도구 문서(`core/tools/<source>.md`), 타겟 도구 문서(`core/tools/<target>.md`), `core/security.md` 를 모두 읽었는가. 하나라도 안 읽었으면 지금 읽는다.
 
-run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `<타겟 루트>/.migrate/<run-id>/`.
+run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 산출물(백업·리포트·MCP 명령)은 `<타겟 루트>/.migrate/<run-id>/` 에 둔다. 예외로 원장 `ledger.json` 은 실행 간 공유되므로 `<타겟 루트>/.migrate/ledger.json` 에 둔다.
 
 ## 카테고리 체크리스트 (매 실행마다 전부 순회)
 
-1. 전역 규칙  2. MCP 서버  3. 스킬  4. 서브에이전트  5. 훅
-6. 권한 규칙  7. env 주입  8. 승인/샌드박스 정책  9. 이관 불가 항목(키바인딩·세션·auth·모델 등)
+1. 전역 규칙  2. MCP 서버  3. 스킬  4. 커맨드/프롬프트  5. 서브에이전트  6. 훅
+7. 권한 규칙  8. env 주입  9. 승인/샌드박스 정책  10. 이관 불가 항목(키바인딩·세션·auth·모델 등)
+
+소스 도구 문서의 인벤토리 표에 있는데 이 목록에 없는 표면을 발견하면, 목록에 없다는 이유로 건너뛰지 말고 항목으로 추가해 처리하고 리포트에 남긴다.
 
 ## Step 1: Scan
 
@@ -607,7 +609,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `
 
 ## Step 2: Plan
 
-카테고리별로 다음 3분류로 나눈 계획표를 만든다.
+계획표는 카테고리별로 묶되 행은 **항목 단위**로 쓴다(한 카테고리 안에 자동·근사·불가가 섞일 수 있다). 각 행을 다음 3분류 중 하나로 표시한다.
 - **자동**: 무손실 변환 가능 (변환 결과 미리보기 포함)
 - **근사**: 의미 손실 있는 변환 (무엇이 손실되는지 명시)
 - **불가**: 이관 불가 (사유 + 수동 조치 방법)
@@ -627,7 +629,7 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 산출 루트는 `
 1. `.migrate/<run-id>/backup/` 생성, 수정 대상 기존 파일 전부 백업.
 2. 원장 확인: `<타겟 루트>/.migrate/ledger.json` 에서 소스 파일의 sha256이 이미 기록돼 있으면 해당 항목은 건너뛰고 리포트에 "이미 이관됨"으로 기록 (재실행 안전).
 3. 타겟 문서의 쓰기 규칙대로 카테고리별 변환·병합 실행.
-4. 원장 갱신: `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 항목 추가. 키는 소스 루트를 절대 경로로 해석한 뒤 파일의 상대 경로를 이어붙인 값이다 — 파일 하나당 항목 하나(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
+4. 원장 갱신: 이관 대상으로 실제 읽은 소스 파일만 `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 기록한다. security.md 의 접근 금지 파일은 해시 계산을 위해서도 읽지 않으므로 원장에 넣지 않는다. 키는 소스 루트를 절대 경로로 해석한 뒤 파일의 상대 경로를 이어붙인 값이다 — 파일 하나당 항목 하나(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
 
 쓰기 실패(JSON 파싱 오류 등) 시: 해당 파일을 백업에서 복원하고, 남은 카테고리를 중단하고, 리포트에 실패 지점을 기록한다.
 
