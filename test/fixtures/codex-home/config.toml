@@ -1,0 +1,30 @@
+model = "gpt-5.6-sol"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+FIXTURE_FLAG = "1"
+
+[mcp_servers.everything]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-everything"]
+
+[mcp_servers.everything.env]
+LOG_LEVEL = "info"
+
+[mcp_servers.secretsvc]
+url = "https://example.com/mcp"
+
+[mcp_servers.secretsvc.http_headers]
+X-API-Key = "sk-test-FAKE-SECRET-123"
+
+[mcp_servers.disabled_one]
+command = "npx"
+args = ["disabled-server"]
+enabled = false
+
+[projects."/tmp/some-project"]
+trust_level = "trusted"
