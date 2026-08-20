@@ -27,6 +27,7 @@ adapters/
 install.sh              adapters/<dest>/SKILL.md + core/ → 대상 스킬 디렉토리 조립 복사. [Task 8]
 scripts/
   verify-migration.sh   E2E 검증기. 타겟 디렉토리를 결정적으로 검사. [Task 2]
+  parse-mcp-commands.py MCP 등록 명령을 구조 분해(name/flags/args/cmd)해 JSON 출력. [Task 2]
 test/
   fixtures/codex-home/  합성 Codex 홈(가짜 시크릿 포함). [Task 1]
   tmp/                  E2E 실행 산출물(gitignore). [Task 1]
@@ -224,6 +225,7 @@ git commit -m "test: add synthetic codex-home fixture with planted fake secrets"
 
 **Files:**
 - Create: `scripts/verify-migration.sh`
+- Create: `scripts/parse-mcp-commands.py`
 
 - [ ] **Step 1: verify-migration.sh 작성**
 
@@ -248,38 +250,10 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 mcp_json="$(mktemp)"
 trap 'rm -f "$mcp_json"' EXIT
-python3 -c "
-import json, shlex, sys, pathlib
-try:
-    text = pathlib.Path(sys.argv[1]).read_text()
-except OSError:
-    print(\"[]\")
-    raise SystemExit
-text = text.replace(\"\\\\\\n\", \" \")
-seps = {\";\", \"&&\", \"||\", \"|\", \"&\", \"(\", \")\"}
-out = []
-for raw in text.splitlines():
-    lex = shlex.shlex(raw, posix=True, punctuation_chars=True)
-    lex.whitespace_split = True
-    lex.commenters = \"#\"
-    try:
-        toks = list(lex)
-    except ValueError:
-        toks = []
-    cur = []
-    for t in toks:
-        if t in seps:
-            if cur:
-                out.append(cur)
-            cur = []
-        else:
-            cur.append(t)
-    if cur:
-        out.append(cur)
-print(json.dumps(out))
-" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
+python3 "$script_dir/parse-mcp-commands.py" "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
 # 전역 규칙 (기존 보존 + 이관 + import 유지 + override 프리시던스)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
@@ -340,15 +314,15 @@ chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|d
 
 # MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
-chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
-chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
-chk "mcp add: everything env"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--env") as $i | $i != null and .[$i+1]=="LOG_LEVEL=info"))' "$mcp_json"
-chk "mcp add: everything separator"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and (index("--") as $i | $i != null and .[$i+1]=="npx"))' "$mcp_json"
-chk "mcp add: everything package arg"  jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything") and any(.[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
-chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc"))' "$mcp_json"
-chk "mcp add: secretsvc http"          jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and (index("--transport") as $i | $i != null and .[$i+1]=="http"))' "$mcp_json"
-chk "mcp add: secretsvc url"           jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="secretsvc") and any(.[]; .=="https://example.com/mcp"))' "$mcp_json"
-chk_not "disabled server not added"    jq -e 'any(.[]; any(.[]; .=="disabled_one"))' "$mcp_json"
+chk "mcp add: two servers registered"  jq -e 'length >= 2' "$mcp_json"
+chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$mcp_json"
+chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
+chk "mcp add: everything command"      jq -e 'any(.[]; .name=="everything" and .cmd[0]=="npx")' "$mcp_json"
+chk "mcp add: everything package arg"  jq -e 'any(.[]; .name=="everything" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
+chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mcp_json"
+chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
+chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
+chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
 # 백업 (존재 + 원본 내용)
 chk "backup of pre-existing CLAUDE.md" test -f "${mig_dir}backup/CLAUDE.md"
@@ -928,7 +902,7 @@ git commit -m "fix: harden knowledge docs until fixture E2E passes"
 - `mcp add: everything by name` 패턴 확정 경위: 1차 앵커안 `claude mcp add .*[[:space:]]everything[[:space:]]+--[[:space:]]` 은 "이름 바로 뒤에 `--`" 를 요구해 토큰 순서에 결합되는 문제가 있었다. `claude mcp add` 는 플래그를 이름 앞(`--env ... everything --`)에도 뒤(`everything --env ... --`)에도 둘 수 있어 이 앵커는 후자에서 거짓 실패한다. 최종안 `(^|[[:space:]])everything([[:space:]]|$)` 은 서버명을 공백 구분 독립 토큰으로만 매칭하므로 순서에 무관하고, 패키지명 `server-everything`(앞이 `-`)은 여전히 배제한다.
 
 - Task 2 코드 품질 리뷰 3라운드 반영(체크 40→62): 검증기가 "산출물 존재"만 보고 "내용"을 안 보던 문제를 닫음 — 훅 command 본문·timeout, 에이전트 description, 두 번째 전역 규칙, 커맨드 본문, MCP stdio 패키지 인자·http transport·url, 백업 파일의 원본성, 원장 유효성·sha256 실측값. 권한은 교차 오염(정답이 오답 리스트에도 있는 경우) 부정 검증 추가. 타겟 사전-존재 설정을 심어 deep merge 동작 자체를 검증 가능하게 만듦. `head -1`→`sort | tail -1` 로 재실행 후 최신 run 검사. `$TARGET`·`.migrate` 부재 시 명시적 ERROR 가드(CWD 상대경로 거짓 PASS 방지). 리터럴 grep 전부 `-F`.
-- MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`shlex` 파싱 + 셸 제어연산자(`;` `&&` `||` `|`)로 명령 분할 → jq 정확 토큰 일치, 모든 조건은 하나의 실제 `claude mcp add` 명령 안에서 만족되어야 함)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 6종(트레일링 주석 은닉·주석 줄 은닉·이름 변조·`&&` 이어붙이기·`;` 이어붙이기·조건 분산)과 거짓 FAIL 부재 4종(줄바꿈·따옴표·정상 `&&` 결합·플래그 순서 변경)을 부정 테스트로 실증.
+- MCP 검증은 문자열 매칭을 버리고 **셸 토큰 파싱**(`scripts/parse-mcp-commands.py` 가 `shlex` 파싱 + 셸 제어연산자(`;` `&&` `||` `|`) 분할 후 각 `claude mcp add` 를 `{name, flags, args, cmd}` 로 구조 분해 → jq 로 이름 위치·플래그 키값·`--` 뒤 실행 명령을 각각 검사)으로 교체했다. 리뷰어가 두 라운드 연속 우회를 실증했기 때문 — 줄 전체 주석만 걸러지던 문제(정상 명령 끝의 트레일링 주석에 숨겨도 통과), `server-everything`이 `everything`으로 오인되던 부분 문자열 문제, 백슬래시 줄바꿈 명령의 거짓 FAIL이 한꺼번에 닫혔다. 차단 8종(트레일링 주석 은닉·주석 줄 은닉·이름 변조·`&&` 이어붙이기·`;` 이어붙이기·조건 분산·포지셔널 위치 반전·디코이 플래그 값)과 거짓 FAIL 부재 4종(줄바꿈·따옴표·정상 `&&` 결합·플래그 순서 변경)을 부정 테스트로 실증.
 
 ## 백로그 (Phase 1 범위 밖 — 이후 픽스처 강화 후보)
 
