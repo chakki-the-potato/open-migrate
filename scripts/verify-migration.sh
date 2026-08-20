@@ -28,17 +28,26 @@ except OSError:
     print(\"[]\")
     raise SystemExit
 text = text.replace(\"\\\\\\n\", \" \")
+seps = {\";\", \"&&\", \"||\", \"|\", \"&\", \"(\", \")\"}
 out = []
 for raw in text.splitlines():
-    lex = shlex.shlex(raw, posix=True)
+    lex = shlex.shlex(raw, posix=True, punctuation_chars=True)
     lex.whitespace_split = True
     lex.commenters = \"#\"
     try:
         toks = list(lex)
     except ValueError:
         toks = []
-    if toks:
-        out.append(toks)
+    cur = []
+    for t in toks:
+        if t in seps:
+            if cur:
+                out.append(cur)
+            cur = []
+        else:
+            cur.append(t)
+    if cur:
+        out.append(cur)
 print(json.dumps(out))
 " "${mig_dir}mcp-commands.sh" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
 
@@ -99,7 +108,7 @@ chk "report: disabled server noted"    grep -qF "disabled_one" "${mig_dir}REPORT
 chk "report: secret re-entry listed"   grep -qF "X-API-Key" "${mig_dir}REPORT.md"
 chk "report: approval policy suggested" grep -qE "approval_policy|sandbox_mode|defaultMode" "${mig_dir}REPORT.md"
 
-# MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈에 영향받지 않음)
+# MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
 chk "mcp commands generated"           test -f "${mig_dir}mcp-commands.sh"
 chk "mcp commands parse as shell"      jq -e 'length >= 2' "$mcp_json"
 chk "mcp add: everything registered"   jq -e 'any(.[]; .[0]=="claude" and .[1]=="mcp" and .[2]=="add" and any(.[]; .=="everything"))' "$mcp_json"
