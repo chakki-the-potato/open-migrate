@@ -17,7 +17,11 @@ If the target (or source) root is not that tool's real home, you are in test mod
 
 **Never read files from the real home in test mode.** Pulling the user's actual configuration into a test run corrupts the result. If the root has no corresponding file, record it as "scope not present", count it as 0, and note it in the report.
 
-Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report, MCP commands) go in `<target root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<target root>/.migrate/ledger.json`.
+## Run artifacts (every scope)
+
+Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report, MCP commands) go in `<root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<root>/.migrate/ledger.json`.
+
+`<root>` is the target root in a home-scope migration and the project root in a project-scope one. This applies to every run, not only to test mode.
 
 ## Project scope
 
@@ -26,6 +30,12 @@ Everything above describes **home scope** — the tool's own configuration direc
 **Source and target share one root.** In home scope the source (`~/.codex`) and the target (`~/.claude`) are two separate trees. In a project they are the same directory: `<project>/.codex/` is the source and `<project>/.claude/` is the target. You are given one project root, not a source root and a target root.
 
 **Project config is usually tracked by git.** Migrating produces a diff in someone's repository and, once pushed, reaches teammates. For every file you write or modify, check whether git tracks it (`git -C <project> ls-files --error-unmatch <path>` succeeds) and record the answer in the report. Never run any other git command — do not stage, commit, or stash. The user decides what to do with the diff.
+
+Before trusting that answer, find out **which** repository answered. `git -C <project> rev-parse --show-toplevel` gives the repository root; compare it to the project root.
+
+- **Same path** — the project is its own repository. Report tracking status directly.
+- **Different path** — the project sits inside a larger repository (a monorepo package, or a scratch directory under some other checkout). The answer describes that outer repository, so say which one in the report. "Untracked" then means "the outer repository does not track it", which is a different fact from "there is no repository here".
+- **No repository at all** — the command fails. Report "not a git repository" rather than "untracked"; nothing will ever be shared.
 
 **The ledger lives in the project.** Write `<project>/.migrate/ledger.json` and `<project>/.migrate/<run-id>/`, exactly as home scope does inside the target root. A project's ledger is independent of the home ledger and of every other project's.
 
@@ -45,6 +55,8 @@ Everything else is unchanged: the same five steps, the same category checklist, 
 - When the target does not read it (Claude Code, Codex CLI), migrate it like any other skill directory.
 
 The same reasoning applies to any other path a target reads natively — check the target doc's compatibility notes before copying.
+
+**Never delete the source copy after migrating it.** When you copy a skill out of `.agents/skills/` into a target that does not read that path, the original stays where it is — removing it would break the tools that were reading it. That does leave the same skill visible twice to any tool reading both paths, so say so in the report: name the skill, both locations, and which tools see the duplicate. The user decides whether to prune.
 
 ## Category checklist (walk all of it, every run)
 
@@ -113,6 +125,8 @@ Write `.migrate/<run-id>/migration-report.md` and print the same content to the 
 
 ## Migrated (automatic)
 - <category>: <item> → <target location>
+
+In a project-scope run, append the git tracking status to every line that names a file you wrote: `(git tracked: yes)`, `(git tracked: no)`, or `(not a git repository)`. When an outer repository answered rather than the project itself, name it: `(git tracked: no — answered by <outer repo path>)`. Home-scope runs omit this entirely.
 
 ## Approximated (review recommended)
 - <item>: <what was approximated and how>

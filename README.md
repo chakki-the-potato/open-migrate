@@ -162,6 +162,15 @@ After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies
 
 **Bump `version` in `.claude-plugin/plugin.json` whenever the content changes.** Plugin managers compare version numbers, not content — `claude plugin update` reports "already at the latest version" and keeps serving the stale cache if the version did not move, no matter how much the files changed.
 
+**Do not keep the plugin enabled while developing.** With both installed, two skills named `migrate` exist — the fresh one from `./install.sh` and the plugin's cache, which lags behind until you push, bump, and update. Which one loads is not predictable, and the stale copy silently lacks whatever you just wrote. Disable the plugin for the duration:
+
+```
+claude plugin disable migrate@migrate-marketplace   # develop against ./install.sh
+claude plugin enable migrate@migrate-marketplace    # restore when done
+```
+
+This bit us during development: an end-to-end test loaded the plugin cache instead of the freshly installed docs and only passed because the agent noticed the staleness on its own.
+
 To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc, then add one fixture, one target verifier, and one source check. Nothing is built per direction.
 
 ## Known limitations
