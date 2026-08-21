@@ -151,6 +151,8 @@ claude plugin validate . --strict   validate the manifests
 
 After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
 
+**Bump `version` in `.claude-plugin/plugin.json` whenever the content changes.** Plugin managers compare version numbers, not content — `claude plugin update` reports "already at the latest version" and keeps serving the stale cache if the version did not move, no matter how much the files changed.
+
 To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc, then add one fixture, one target verifier, and one source check. Nothing is built per direction.
 
 ## Known limitations
