@@ -1,0 +1,12 @@
+{
+  "name": "migrate-marketplace",
+  "description": "Settings migration between AI coding tools",
+  "owner": { "name": "chakki-the-potato" },
+  "plugins": [
+    {
+      "name": "migrate",
+      "source": "./",
+      "description": "Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build)"
+    }
+  ]
+}
