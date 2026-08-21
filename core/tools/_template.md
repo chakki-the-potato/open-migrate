@@ -1,29 +1,29 @@
-# <도구 이름> (<제조사>)
+# <Tool name> (<vendor>)
 
-홈: `<설정 루트 경로>`. 이 문서는 소스로 읽을 때와 타겟으로 쓸 때 모두 사용한다.
+Home: `<config root path>`. Use this doc both when reading the tool as a source and when writing to it as a target.
 
-## 감지
+## Detection
 
-<설치 판단 기준 파일/디렉토리>
+<the file or directory whose presence means the tool is installed>
 
-## 설정 인벤토리 (읽기)
+## Config inventory (read)
 
-| 카테고리 | 위치 | 포맷 |
+| Category | Location | Format |
 |---|---|---|
-| 전역 규칙 | | |
+| Global rules | | |
 | MCP | | |
-| 스킬 | | |
-| 훅 | | |
-| 권한 규칙 | | |
-| 서브에이전트 | | |
-| env 주입 | | |
-| 승인 정책 | | |
-| 읽지 말 것 | | security.md 적용 |
+| Skills | | |
+| Hooks | | |
+| Permission rules | | |
+| Subagents | | |
+| Env injection | | |
+| Approval policy | | |
+| Never read | | security.md applies |
 
-## 변환 규칙 (이 도구 → 다른 도구)
+## Conversion rules (this tool → other tools)
 
-<카테고리별: 이벤트명·매처·문법 변환 규칙. 등가물 없는 항목은 "불가 — 수동 안내" 명시>
+<Per category: event names, matchers, syntax conversions. For anything with no equivalent, state "not migratable — manual guidance">
 
-## 쓰기 규칙 (이 도구가 타겟일 때)
+## Write rules (when this tool is the target)
 
-<카테고리별: 파일 직접 쓰기 vs CLI 명령, 병합 규칙, 검증 명령>
+<Per category: direct file writes vs. CLI commands, merge rules, validation commands>

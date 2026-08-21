@@ -3,27 +3,27 @@ name: migrate
 description: Migrate settings from another AI coding tool (Claude Code, Cursor, Grok) into Codex CLI — rules, MCP servers, skills, subagents, hooks, permissions. Use when the user asks to import or migrate settings from another AI tool, or runs /migrate [source].
 ---
 
-# migrate — AI 설정 마이그레이션 (목적지: Codex CLI)
+# migrate — AI settings migration (destination: Codex CLI)
 
-너는 목적지 도구(Codex CLI) 안에서 실행 중이다. 소스 도구의 설정을 이 도구로 이관한다.
+You are running inside the destination tool (Codex CLI). Migrate another tool's settings into this one.
 
-## 0. 입력 해석
+## 0. Resolve inputs
 
-- 스킬 디렉토리 = 이 `SKILL.md` 파일이 있는 디렉토리(통상 `~/.codex/skills/migrate/`). 아래의 모든 `core/...` 경로는 이 디렉토리 기준 상대 경로다.
-- 소스 = `$ARGUMENTS` 에서 찾은 도구 이름 (`claude` | `cursor` | `grok`). 인자가 `/migrate claude` 처럼 토큰 하나면 그 단어를, 자연어 문장이면 문장 안에 언급된 도구 이름을 쓴다.
-- 해당 소스의 문서가 `core/tools/` 에 없으면 지원 예정이라고 알리고 중단한다.
-- 소스 루트 = 소스 도구 문서의 기본 홈. 사용자가 소스 루트 경로를 명시하면 그 경로를 대신 쓴다.
-- 타겟 루트 = 실제 Codex 환경 (`$CODEX_HOME`, 기본 `~/.codex`, `core/tools/codex.md` 기준). 사용자가 타겟 루트를 명시하면 그 경로를 쓰고 **테스트 모드**로 전환한다.
-- 소스도 소스 루트도 특정되지 않았을 때만 자동 감지한다. `~/.claude`, `~/.cursor`, `~/.grok` 존재 여부를 확인해 발견된 도구를 사용자에게 제시하고 고르게 한다(목적지 자신은 제외). 사용자에게 물을 수 없으면 추측하지 말고 중단한다.
+- Skill directory = the directory holding this `SKILL.md` (normally `~/.codex/skills/migrate/`). Every `core/...` path below is relative to it.
+- Source = the tool name found in `$ARGUMENTS` (`claude` | `cursor` | `grok`). When the argument is a single token such as `/migrate claude`, use that word; for a natural-language sentence, use the tool name mentioned in it.
+- If that source has no doc under `core/tools/`, say support is planned and stop.
+- Source root = the default home from the source tool's doc. If the user gives an explicit source root path, use that instead.
+- Target root = the real Codex CLI environment (`$CODEX_HOME`, defaulting to `~/.codex`, per `core/tools/codex.md`). If the user gives an explicit target root, use it and switch to **test mode** (see procedure.md, "Path resolution in test mode").
+- Auto-detect only when neither the source nor a source root was given. Check whether `~/.claude`, `~/.cursor`, and `~/.grok` exist, present the tools you found, and let the user choose (excluding the destination itself). If you cannot ask the user, stop rather than guess.
 
-## 1. 지식 로드 (스킬 디렉토리 기준, 전부 필수)
+## 1. Load knowledge (relative to the skill directory, all required)
 
-1. `core/security.md` — 최우선 정책
-2. `core/procedure.md` — 실행 절차
-3. `core/tools/<source>.md` — 소스 읽기·변환 규칙
-4. `core/tools/codex.md` — 타겟 쓰기 규칙
-5. 위 문서가 다른 도구 문서로 규칙을 위임하면(예: "codex.md 의 MCP 변환 규칙을 그대로 적용한다") **그 문서도 읽는다.** 위임을 따라가지 않으면 규칙의 절반만 아는 상태가 된다.
+1. `core/security.md` — the policy that overrides everything
+2. `core/procedure.md` — the execution procedure
+3. `core/tools/<source>.md` — how to read and convert the source
+4. `core/tools/codex.md` — how to write to this target
+5. If any of those delegates a rule to another tool's doc (for example "apply codex.md's MCP conversion rules directly"), **read that doc too.** Skipping the delegation leaves you with half the rules.
 
-## 2. 실행
+## 2. Execute
 
-`core/procedure.md` 의 Scan → Plan → Confirm → Apply → Report 를 순서대로 수행한다.
+Follow procedure.md's Scan → Plan → Confirm → Apply → Report, in order.
