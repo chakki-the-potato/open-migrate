@@ -72,8 +72,12 @@ run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 �
 
 ## 승인/샌드박스 정책 근사 매핑표 (참고용 — 자동 적용 금지, 항상 제안만)
 
-| Codex approval_policy + sandbox | Claude defaultMode | Cursor approvalMode | Grok permission_mode |
-|---|---|---|---|
-| untrusted / read-only | default | allowlist | default(ask) |
-| on-request / workspace-write | acceptEdits | allowlist | acceptEdits |
-| never / danger-full-access | bypassPermissions | unrestricted | bypassPermissions |
+| 자동화 강도 | Codex approval_policy + sandbox | Claude defaultMode | Cursor approvalMode | Grok permission_mode |
+|---|---|---|---|---|
+| 1 — 확인 위주 | untrusted / read-only | default | allowlist | default(ask) |
+| 2 — 편집 자동 수용 | on-request / workspace-write | acceptEdits | auto-review | acceptEdits |
+| 3 — 전면 허용 | never / danger-full-access | bypassPermissions | unrestricted | bypassPermissions |
+
+각 값은 열마다 **정확히 한 행에만** 등장한다 — 어느 도구를 소스로 잡아도 역방향 조회가 유일하게 결정된다. 표에 없는 값을 만나면 추측하지 말고 그 사실을 리포트에 적는다.
+
+이 표는 각 도구의 자동화 강도를 같은 순서로 늘어놓은 것이지, 도구 간 동작이 동일하다는 뜻이 아니다. Cursor `allowlist` 와 `auto-review` 의 차이는 분류기 사용 여부이고(allowlist 는 결정적, auto-review 는 허용목록 밖 명령을 샌드박스·분류기로 넘긴다), Claude 모드와의 대응은 리서치로 확정된 바 없다. 그래서 **자동 적용이 금지된 제안 전용 표**다.
