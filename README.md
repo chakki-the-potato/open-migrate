@@ -1,4 +1,4 @@
-# migrate
+# open-migrate
 
 AI 코딩 도구를 갈아탈 때 설정을 한 번에 옮긴다. 규칙·MCP 서버·스킬·서브에이전트·훅·권한을 소스 도구에서 읽어 목적지 도구의 형식으로 변환한다.
 
@@ -21,7 +21,7 @@ adapters/*/SKILL.md 도구별 진입점 (목적지만 다른 얇은 껍데기)
 ### Claude Code · Codex CLI — 플러그인
 
 ```
-/plugin marketplace add <이 저장소>
+/plugin marketplace add chakki-the-potato/open-migrate
 /plugin install migrate@migrate-marketplace
 ```
 
@@ -30,6 +30,8 @@ adapters/*/SKILL.md 도구별 진입점 (목적지만 다른 얇은 껍데기)
 ### Cursor · Grok Build — 설치 스크립트
 
 ```
+git clone https://github.com/chakki-the-potato/open-migrate.git
+cd open-migrate
 ./install.sh cursor    # → ~/.cursor/skills/migrate
 ./install.sh grok      # → ~/.grok/skills/migrate  (GROK_HOME 존중)
 ```
