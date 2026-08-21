@@ -18,18 +18,19 @@ Grok Build 는 다른 도구의 합집합처럼 생겼다 — **훅과 권한은
 | MCP | `~/.grok/config.toml` `[mcp_servers.<name>]` | TOML. Codex 와 같은 모양: stdio 는 `command`/`args` + 하위 테이블 `[mcp_servers.<name>.env]`, remote 는 `url` + `[mcp_servers.<name>.http_headers]`. `enabled = false` 로 비활성 |
 | 스킬 | `~/.grok/skills/<name>/SKILL.md` | agent-skills 표준 레이아웃(지원 파일 포함). frontmatter `user-invocable: true` 면 슬래시 명령으로 노출 |
 | 커맨드/프롬프트 | **표면 없음** | 전용 커맨드 디렉토리가 없다 — 슬래시 명령은 스킬로 만든다 |
-| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter(**camelCase**) + 본문(시스템 프롬프트). 필수 `name`·`description`. 선택 `promptMode`(`extend`\|`full`)·`capabilityMode`·`permissionMode`·`tools`·`disallowedTools`·`effort`·`maxTurns`·`isolation`·`background`·`color`·`skills`·`initialPrompt`·`mcpServers` 등 |
+| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter(**camelCase**) + 본문(시스템 프롬프트). 필수 `name`·`description`. 선택 필드 전체: `model`·`tools`·`color`·`promptMode`(`extend`\|`full`)·`capabilityMode`·`permissionMode`·`disallowedTools`·`effort`·`maxTurns`·`isolation`·`background`·`skills`·`discoverSkills`·`inheritSkills`·`agentsMd`·`injectDefaultTools`·`initialPrompt`·`mcpServers`. **이 표가 Grok 필드의 유일한 목록이다** — 다른 절에서 목록을 다시 나열하지 않고 이 행을 참조한다 |
 | 훅 | `~/.grok/hooks/*.json` (그리고 `config.toml` 인라인) | **JSON 구조가 Claude Code 와 같다**: `{"hooks": {"<Event>": [{"matcher": "...", "hooks": [{"type": "command", "command": "...", "timeout": 10}]}]}}`. 이벤트명도 PascalCase. `timeout` 단위는 초 |
 | 권한 규칙 | `~/.grok/config.toml` `[permission]` | 두 형태가 있다. (1) 컴팩트 문자열 배열 `allow`/`ask`/`deny` — 규칙 문자열이 **Claude 와 같은 문법**(`Bash(git status:*)`, `Read(src/**)`, `Edit(**/*.rs)`, `Grep`, `WebFetch(domain:example.com)`, `MCPTool(server__tool)`). (2) 구조적 `rules = [{ action = "allow\|deny\|ask", tool = "bash\|read\|edit\|grep\|mcp\|webfetch\|websearch", pattern = "git *" }]`. 병합 우선순위는 deny > ask > allow |
 | env 주입 | `~/.grok/config.toml` `[shell_environment_policy]` | Codex 와 같은 테이블명·구조. 주입할 값은 하위 테이블 `[shell_environment_policy.set]` |
-| 승인 정책 | `~/.grok/config.toml` `[ui] permission_mode` | 값: `default`(ask)·`acceptEdits`·`auto`·`dontAsk`·`bypassPermissions`(제품명 always-approve)·`plan` |
+| 승인 정책 | `~/.grok/config.toml` `[ui] permission_mode` | 값: `default`(ask)·`acceptEdits`·`auto`·`dontAsk`·`bypassPermissions`(제품명 always-approve)·`plan`. procedure.md 매핑표에는 이 중 3개만 대응 행이 있다 — 나머지는 제안값 없이 현재 값만 인용한다 |
+| 샌드박스 | `~/.grok/config.toml` `[sandbox] profile` (커스텀 프로파일은 `~/.grok/sandbox.toml` `[profiles.<name>]`) | 값: `off`·`workspace`·`devbox`·`read-only`·`strict`. **이관하지 않는다** — OS 수준 격리라 도구마다 의미가 달라 등가 매핑이 없다. 현재 값을 인용해 리포트에만 남긴다 |
 | 모델 | `~/.grok/config.toml` `model` | 이관하지 않음 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 읽지 말 것 | `~/.grok/auth.json`, `~/.grok/sessions/`, `~/.grok/memory/` | security.md 적용. `memory/` 는 평문 markdown 이라 기술적으로는 복사 가능하지만 설정이 아니라 대화 내용이므로 **기본 제외**한다 |
 
 ## 변환 규칙 (Grok → 다른 도구)
 
 ### 전역 규칙
-- `rules/*.md` 와 `AGENTS.md` 를 모두 읽어 타겟의 전역 규칙 파일에 원문 그대로 병합(요약·재작성 금지). 파일이 여러 개면 `### <파일명>` 하위 헤딩으로 구분하고 **알파벳순(= Grok 의 실제 로드 순서)** 을 유지한다.
+- `rules/*.md` 와 `AGENTS.md` 를 모두 읽어 타겟의 전역 규칙 파일에 원문 그대로 병합(요약·재작성 금지). 병합 섹션·하위 헤딩 형식은 procedure.md 의 "전역 규칙 병합 형식" 을 따른다. Grok 의 로드 순서는 **파일명 알파벳순**이다.
 - `@경로` import 줄은 펼치지 말고 원문 그대로 옮긴다.
 - `GROK.md` 처럼 Grok 이 인식하지 않는 파일명은 **이관 대상이 아니다** — 발견해도 옮기지 말고 "Grok 이 읽지 않는 파일" 로만 리포트에 기록한다.
 
@@ -41,17 +42,18 @@ Grok Build 는 다른 도구의 합집합처럼 생겼다 — **훅과 권한은
 ### 스킬
 - `SKILL.md` 디렉토리를 지원 파일까지 그대로 복사.
 - `user-invocable: true` 는 Grok 전용 frontmatter 키다. 타겟이 같은 키를 쓰지 않으면 **그 키만 드롭하고 나머지 frontmatter 와 본문은 유지**한 뒤 리포트에 기록한다.
+- 타겟 문서가 스킬을 "디렉토리째 복사" 로 규정하더라도 **이 키 드롭이 우선한다.** 일반 규칙(무변형 복사)과 특정 규칙(이 키는 타겟에서 무효)이 부딪히면 특정 규칙을 따른다 — 다른 카테고리에서도 같다.
 
 ### 서브에이전트
 - frontmatter 가 camelCase 다. `name`·`description` 은 어느 도구에서나 공통이므로 그대로 매핑한다.
 - `model` 은 값 공간이 도구마다 다르다 — 타겟 문서의 서브에이전트 규칙을 따른다(`inherit` 처럼 양쪽 공통인 값만 그대로 옮기고, 나머지는 드롭 후 리포트).
-- `tools`/`disallowedTools` 는 타겟에 도구 허용목록 개념이 있을 때만 옮긴다.
-- Grok 전용 필드(`promptMode`·`capabilityMode`·`permissionMode`·`discoverSkills`·`inheritSkills`·`agentsMd`·`injectDefaultTools`·`maxTurns`·`isolation`·`background`·`initialPrompt`·`mcpServers`)는 타겟에 대응 필드가 없으면 드롭 후 리포트에 기록.
+- `tools`·`color` 는 타겟에 같은 이름의 필드가 있을 때만 옮긴다(Claude 는 둘 다 있다).
+- **나머지 필드는 위 인벤토리 행의 목록에서 파생한다** — `name`·`description`·`model`·`tools`·`color` 를 뺀 전부가 Grok 쪽에만 있는 필드이므로, 타겟에 같은 이름의 필드가 없으면 드롭하고 리포트에 키 이름을 남긴다. 목록을 여기 다시 적지 않는 이유는 두 곳에 적으면 갈라지기 때문이다 — 판단 기준은 언제나 "타겟 문서에 그 필드가 있는가" 하나다.
 
 ### 훅
 - **구조 변환이 필요 없다.** Grok 훅 파일의 `hooks` 객체는 Claude `settings.json` 의 `hooks` 값과 같은 모양이다 — Claude 가 타겟이면 그 객체를 꺼내 그대로 병합한다.
 - Grok 이벤트 15종: `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`, `StopFailure`, `StopCancelled`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `SubagentStart`, `SubagentStop`, `Notification`, `PreCompact`, `PostCompact`.
-- 이벤트 처리는 **타겟 문서를 따른다** — Codex 는 공식 11개 밖을 드롭하고(codex.md), Cursor 는 camelCase 8개로 변환한다(cursor.md). 이 목록에 없는 이벤트명은 추측하지 말고 드롭 후 기록.
+- 이벤트 처리는 **타겟 문서를 따른다** — Claude 는 이벤트명이 같아 무변환이고(claude.md 훅 행의 유효 이벤트 규칙 적용), Codex 는 공식 11개 밖을 드롭하며(codex.md), Cursor 는 camelCase 8개로 변환한다(cursor.md). 위 15종에 없는 이벤트명은 추측하지 말고 드롭 후 기록.
 - `type` 은 `command` 와 `http` 두 가지다. `http` 타입은 다른 도구에 등가물이 없다 — 드롭 후 리포트.
 - 매처는 도구명이며 Claude 와 같은 이름(`Bash`·`Read`·`Edit`·`Write`·`Grep`)을 쓴다 — Claude 로 갈 때 무변환, 그 외 타겟은 해당 문서의 도구명 매처 매핑을 적용한다.
 
@@ -75,7 +77,7 @@ Grok Build 는 다른 도구의 합집합처럼 생겼다 — **훅과 권한은
 | MCP | `config.toml` `[mcp_servers.<name>]` | stdio: `command`/`args` + `[mcp_servers.<name>.env]`. remote: `url` + `[mcp_servers.<name>.http_headers]`. 시크릿 값은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재. **동명 서버가 이미 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
 | 스킬 | `~/.grok/skills/<name>/` | 디렉토리째 복사(지원 파일 포함). **동명 스킬이 있으면 건너뛰고 리포트에 기록** |
 | 커맨드/프롬프트 | `~/.grok/skills/<name>/SKILL.md` (커맨드가 아니라 스킬로 이관) | Grok 에는 커맨드 표면이 없다. 소스 커맨드를 `name`/`description` frontmatter 로 감싸 스킬로 변환하고, 슬래시 명령으로 쓰려면 `user-invocable: true` 를 함께 넣는다. `name` 은 소스 파일명(확장자 제외). 소스에 `description` 이 없으면 지어내지 말고 본문 첫 문장을 그대로 쓰고 합성했다는 사실을 리포트에 기록한다. 소스의 `$1`-`$9`/`$ARGUMENTS` 치환 토큰은 원문 그대로 둔다 |
-| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter는 **camelCase** 로 쓴다. `name`·`description` 은 그대로. 소스의 스네이크·케밥 표기 키는 camelCase 로 바꾼다. 타겟에 대응 필드가 없는 소스 전용 키(Claude `color`, Cursor `readonly`·`is_background` 등)는 드롭 후 리포트. **동명 파일이 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
+| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter는 **camelCase** 로 쓴다. `name`·`description` 은 그대로. 소스의 스네이크·케밥 표기 키는 camelCase 로 바꾼다. 타겟에 대응 필드가 없는 소스 전용 키(Cursor `readonly`·`is_background` 등)는 드롭 후 리포트. **`color` 는 Grok 에도 있는 필드이므로 드롭하지 않는다**(위 인벤토리 행 참조). **동명 파일이 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
 | 훅 | `~/.grok/hooks/migrated.json` | 최상위 구조는 반드시 `{"hooks": {...}}`. Claude 소스면 `settings.json` 의 `hooks` 값을 **무변환으로** 넣는다. 기존 파일이 있으면 배열에 append 하고 동일 command 는 스킵. 위 이벤트 15종 밖의 이름은 드롭 후 리포트. `type` 이 `command`·`http` 가 아닌 항목도 드롭 후 리포트 |
 | 권한 | `config.toml` `[permission]` 의 `allow`/`ask`/`deny` 배열 | Claude 소스면 규칙 문자열을 **그대로** append(중복 제거). Cursor 소스면 `Shell(...)` → `Bash(...)` 로 개명한다(cursor.md 권한 규칙과 같은 개명). Codex 소스면 `prefix_rule(pattern=["git","status"], decision="allow")` → `Bash(git status:*)` 로 되돌린다 — 토큰을 공백으로 잇고 `:*` 를 붙이며, decision `prompt`→`ask`, `forbidden`→`deny` 로 매핑한다. 구조적 `rules = [...]` 형태로는 쓰지 않는다(컴팩트 배열이 소스 문법과 더 가깝다) |
 | env 주입 | `config.toml` `[shell_environment_policy.set]` | 키 단위 병합, 기존 키 보존. 값이 다른 동명 키는 자동 결정하지 않고 사용자에게 묻는다 |
@@ -86,6 +88,9 @@ Grok Build 는 다른 도구의 합집합처럼 생겼다 — **훅과 권한은
 `config.toml` 은 TOML 이다. JSON 처럼 범용 병합 도구를 쓸 수 없으므로 아래를 따른다.
 
 1. 수정 전 원본을 `.migrate/<run-id>/backup/config.toml` 로 복사한다.
-2. **기존 줄을 재작성하지 않는다.** 새 테이블(`[mcp_servers.<name>]` 등)은 파일 끝에 append 하고, 기존 테이블에 키를 추가할 때는 그 테이블 블록 안에만 줄을 넣는다. 전체를 파싱해 다시 직렬화하면 주석과 키 순서가 사라진다.
+2. **파일 전체를 파싱해 다시 직렬화하지 않는다** — 주석과 키 순서가 사라진다. 대신 최소 편집만 한다.
+   - 새 테이블(`[mcp_servers.<name>]` 등)은 **파일 끝에 append** 한다. TOML 은 테이블 헤더 이후의 줄이 그 테이블에 속하므로, 기존 테이블 블록(`[permission]` 등)이 파일 끝에 있어도 새 헤더를 붙이면 경계가 자동으로 갈린다.
+   - 기존 테이블에 **새 키**를 추가할 때는 그 테이블 블록 안에 줄을 넣는다.
+   - 기존 **배열 값을 확장**할 때(`allow = [...]` 에 항목 추가 등)는 그 한 줄만 in-place 로 다시 쓴다. 이것은 위 "재작성하지 않는다" 의 예외가 아니라 최소 편집의 한 형태다 — 배열은 한 줄이 곧 값 전체라 그 줄 말고는 건드릴 것이 없다. 기존 원소의 순서를 유지한 채 뒤에 append 하고 중복만 제거한다.
 3. 값 인용: 문자열 값은 큰따옴표로 감싼다. 불리언·정수는 따옴표 없이 쓴다. 배열 원소가 문자열이면 각각 큰따옴표로 감싼다.
 4. 쓰기 후 TOML 유효성을 확인한다(`python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" config.toml`). 실패 시 백업을 복원하고 중단·보고한다.
