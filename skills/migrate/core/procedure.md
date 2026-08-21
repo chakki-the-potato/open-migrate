@@ -1,116 +1,117 @@
-# Migration Procedure (5단계 — 순서 엄수)
+# Migration Procedure (5 steps — follow in order)
 
-실행 전 제자리 확인: 소스 도구 문서(`core/tools/<source>.md`), 타겟 도구 문서(`core/tools/<target>.md`), `core/security.md` 를 모두 읽었는가. 하나라도 안 읽었으면 지금 읽는다.
+Before you start, confirm you have read all three: the source tool doc (`core/tools/<source>.md`), the target tool doc (`core/tools/<target>.md`), and `core/security.md`. If any is unread, read it now.
 
-## 문서 충돌 시 우선순위
+## Precedence when docs conflict
 
-같은 항목에 대해 두 문서가 다르게 지시하면 아래 순서로 판정한다. 추측하거나 더 그럴듯한 쪽을 고르지 마라.
+When two docs give different instructions for the same item, resolve it in this order. Do not guess, and do not pick whichever sounds more reasonable.
 
-1. **security.md 가 언제나 최우선이다.**
-2. **쓰기 위치·형식은 타겟 문서가 이긴다.** 소스 문서가 "타겟의 커맨드 파일로 옮긴다" 처럼 타겟 쪽 목적지를 지정하더라도, 타겟 문서가 그 카테고리를 다르게 규정하면(예: "커맨드가 아니라 스킬로 이관") 타겟 문서를 따른다. 소스 문서는 소스를 어떻게 **읽고 해석**하는지에 대해 권위를 갖고, 타겟 문서는 결과를 어디에 어떤 모양으로 **쓰는지**에 대해 권위를 갖는다.
-3. **구체 규칙이 일반 규칙을 이긴다.** "디렉토리째 복사" 같은 일반 지시와 "이 키는 타겟에서 무효이므로 드롭" 같은 특정 지시가 부딪히면 특정 지시를 따른다.
-4. 그래도 갈리면 **옮기지 않고** 원문을 수동 조치 목록에 올린 뒤 충돌 사실을 리포트에 적는다.
+1. **security.md always wins.**
+2. **The target doc wins on write location and format.** Even if the source doc names a destination ("move it to the target's command file"), follow the target doc when it defines that category differently ("migrate as a skill, not a command"). The source doc is authoritative on how to **read and interpret** the source; the target doc is authoritative on **where and in what shape** the result is written.
+3. **A specific rule beats a general one.** When a general instruction ("copy the whole directory") collides with a specific one ("this key is invalid on the target, drop it"), follow the specific one.
+4. If it is still ambiguous, **do not migrate it.** Put the original in the manual-action list and record the conflict in the report.
 
-## 테스트 모드의 경로 해석 (모든 도구 공통)
+## Path resolution in test mode (applies to every tool)
 
-타겟(또는 소스) 루트가 그 도구의 실제 홈이 아니면 테스트 모드다. 이때 도구 문서에 적힌 홈 절대 경로는 전부 그 루트로 치환해서 읽는다 — `~/.cursor/mcp.json` 은 `<루트>/mcp.json`, `~/.grok/config.toml` 은 `<루트>/config.toml` 이다. 홈 **바깥**에 있는 파일(Claude `~/.claude.json` 등)은 루트 **안쪽**으로 접어 `<루트>/.claude.json` 으로 본다.
+If the target (or source) root is not that tool's real home, you are in test mode. Substitute the root for every home path the tool docs mention — `~/.cursor/mcp.json` becomes `<root>/mcp.json`, `~/.grok/config.toml` becomes `<root>/config.toml`. Files that live **outside** the home directory (such as Claude's `~/.claude.json`) fold **inside** the root: `<root>/.claude.json`.
 
-**실제 홈의 파일은 어떤 경우에도 읽지 않는다.** 테스트 실행이 사용자의 진짜 설정을 끌어들이면 결과가 오염된다. 루트 안에 대응 파일이 없으면 "해당 스코프 없음" 으로 0건 처리하고 리포트에 적는다.
+**Never read files from the real home in test mode.** Pulling the user's actual configuration into a test run corrupts the result. If the root has no corresponding file, record it as "scope not present", count it as 0, and note it in the report.
 
-run-id는 `YYYYMMDD-HHMMSS` 형식으로 지금 생성한다. 이번 실행의 산출물(백업·리포트·MCP 명령)은 `<타겟 루트>/.migrate/<run-id>/` 에 둔다. 예외로 원장 `ledger.json` 은 실행 간 공유되므로 `<타겟 루트>/.migrate/ledger.json` 에 둔다.
+Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report, MCP commands) go in `<target root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<target root>/.migrate/ledger.json`.
 
-## 카테고리 체크리스트 (매 실행마다 전부 순회)
+## Category checklist (walk all of it, every run)
 
-1. 전역 규칙  2. MCP 서버  3. 스킬  4. 커맨드/프롬프트  5. 서브에이전트  6. 훅
-7. 권한 규칙  8. env 주입  9. 승인/샌드박스 정책  10. 이관 불가 항목(키바인딩·세션·auth·모델 등)
+1. Global rules  2. MCP servers  3. Skills  4. Commands/prompts  5. Subagents  6. Hooks
+7. Permission rules  8. Env injection  9. Approval/sandbox policy  10. Non-migratable items (keybindings, sessions, auth, model, etc.)
 
-소스 도구 문서의 인벤토리 표에 있는데 이 목록에 없는 표면을 발견하면, 목록에 없다는 이유로 건너뛰지 말고 항목으로 추가해 처리하고 리포트에 남긴다.
+If the source tool doc's inventory table lists a surface that is missing from this checklist, do not skip it for being absent here — add it as an item, process it, and note it in the report.
 
-반대로 **소스 파일에는 있는데 소스 문서의 인벤토리 표에 없는 설정**을 발견하면, 그것도 침묵하지 않는다. 문서화되지 않은 설정은 변환 규칙이 없다는 뜻이므로 **옮기지 말고**, 키 이름과 현재 값을 그대로 인용해 "이관하지 않음 — 문서에 변환 규칙 없음" 으로 리포트에 기록한다.
+Conversely, if you find **a setting present in the source files but absent from the source doc's inventory table**, do not stay silent about it either. An undocumented setting means there is no conversion rule, so **do not migrate it** — quote the key name and its current value and record it in the report as "not migrated — no conversion rule in the docs".
 
 ## Step 1: Scan
 
-- 소스 문서의 인벤토리 표를 따라 각 카테고리의 파일 존재·내용을 조사한다.
-- security.md의 접근 금지 파일은 존재만 기록한다.
-- 카테고리별로 발견 항목 수를 센다(없으면 0으로 기록 — 침묵 금지).
+- Walk the source doc's inventory table and check each category for file existence and contents.
+- For files security.md forbids, record existence only.
+- Count the items found per category (record `0` when there are none — never stay silent).
 
 ## Step 2: Plan
 
-계획표는 카테고리별로 묶되 행은 **항목 단위**로 쓴다(한 카테고리 안에 자동·근사·불가가 섞일 수 있다). 각 행을 다음 3분류 중 하나로 표시한다.
-- **자동**: 무손실 변환 가능 (변환 결과 미리보기 포함)
-- **근사**: 의미 손실 있는 변환 (무엇이 손실되는지 명시)
-- **불가**: 이관 불가 (사유 + 수동 조치 방법)
-- **제안**: 타겟에 대응 개념은 있으나 **자동 적용이 금지된** 항목 (승인 정책·샌드박스 등). 소스 값과 제안 값을 함께 적되 아무것도 쓰지 않는다. 근사로 세지 마라 — 근사는 무언가를 쓴 것이고 제안은 쓰지 않은 것이다.
+Group the plan table by category but write **one row per item** — a single category can mix automatic, approximate, and impossible items. Mark each row with one of these:
 
-시크릿이 탐지된 항목은 계획표에 `<REDACTED-REENTER>` 로 표시한다.
+- **Automatic**: lossless conversion (include a preview of the converted result)
+- **Approximate**: conversion with semantic loss (state exactly what is lost)
+- **Impossible**: cannot be migrated (reason + how to do it manually)
+- **Suggestion**: the target has a corresponding concept but **automatic application is forbidden** (approval policy, sandbox, etc.). Record the source value alongside the suggested value, but write nothing. Do not count these as approximate — approximate means something was written, suggestion means nothing was.
+
+Mark any item with a detected secret as `<REDACTED-REENTER>` in the plan table.
 
 ## Step 3: Confirm
 
-- 계획표를 사용자에게 제시하고 승인을 받는다. 카테고리 단위 제외를 허용한다.
-- 타겟에 이미 존재해 충돌하는 항목(동명 스킬, 값이 다른 env 키 등)은 여기서 개별 확인한다.
-- **승인 전에는 어떤 파일도 쓰지 않는다.** 사용자가 중단하면 계획표만 남기고 종료한다.
+- Present the plan table to the user and get approval. Allow excluding whole categories.
+- Items that conflict with something already in the target (same-name skill, env key with a different value) are confirmed individually here.
+- **Write nothing before approval.** If the user stops, end the run leaving only the plan table.
 
 ## Step 4: Apply
 
-승인된 카테고리만, 다음 순서로 처리한다.
+Process only approved categories, in this order.
 
-1. `.migrate/<run-id>/backup/` 생성, 수정 대상 기존 파일 전부 백업.
-2. 원장 확인: `<타겟 루트>/.migrate/ledger.json` 에서 소스 파일의 sha256이 이미 기록돼 있으면 해당 항목은 건너뛰고 리포트에 "이미 이관됨"으로 기록 (재실행 안전).
-3. 타겟 문서의 쓰기 규칙대로 카테고리별 변환·병합 실행.
-4. 원장 갱신: 이번 실행에서 실제로 읽은 소스 파일을 `{ "<소스 파일 경로>": { "sha256": "...", "run": "<run-id>" } }` 형식으로 기록한다. 자동·근사·불가 분류와 무관하게 읽은 파일은 모두 대상이다(다음 실행의 변경 감지에 필요). security.md 의 접근 금지 파일은 해시 계산을 위해서도 읽지 않으므로 원장에 넣지 않는다. **소스 도구 문서가 "이관 대상 아님" 으로 규정해 내용을 열지 않은 파일**(Cursor `skills-cursor/`, Grok `GROK.md` 등)도 같은 이유로 원장에 넣지 않는다 — 원장은 "읽어서 옮긴 것" 의 기록이지 "본 적 있는 것" 의 목록이 아니다. 이 파일들은 다음 실행에서도 같은 규칙으로 다시 제외되므로 변경 감지가 필요 없다. 키는 소스 루트를 절대 경로로 해석한 뒤 파일의 상대 경로를 이어붙인 값이다 — 파일 하나당 항목 하나(테스트 모드도 동일). 같은 파일을 다시 이관하면 해당 항목을 최신 run 정보로 덮어쓴다 — 이력은 보관하지 않는다.
+1. Create `.migrate/<run-id>/backup/` and back up every existing file you are about to modify.
+2. Check the ledger: if `<target root>/.migrate/ledger.json` already records the sha256 of a source file, skip that item and record it in the report as "already migrated" (this is what makes re-runs safe).
+3. Convert and merge per category, following the target doc's write rules.
+4. Update the ledger: record every source file you actually read this run as `{ "<source file path>": { "sha256": "...", "run": "<run-id>" } }`. Every file you read belongs here regardless of whether it was classified automatic, approximate, or impossible — the next run needs it for change detection. Files forbidden by security.md are never read, not even to compute a hash, so they are not in the ledger. **Files the source tool doc declares out of scope**, whose contents you therefore never opened (Cursor's `skills-cursor/`, Grok's `GROK.md`), stay out for the same reason — the ledger records what you read and migrated, not everything you laid eyes on. Those files get excluded again by the same rule on the next run, so change detection is unnecessary. The key is the source root resolved to an absolute path joined with the file's relative path — one entry per file, in test mode too. Re-migrating the same file overwrites its entry with the latest run info; no history is kept.
 
-쓰기 실패(JSON 파싱 오류 등) 시: 해당 파일을 백업에서 복원하고, 남은 카테고리를 중단하고, 리포트에 실패 지점을 기록한다.
+If a write fails (JSON parse error and the like): restore that file from the backup, stop the remaining categories, and record the failure point in the report.
 
-### 전역 규칙 병합 형식 (모든 타겟 공통)
+### Global-rule merge format (applies to every target)
 
-타겟 문서들이 공통으로 지시하는 `## Migrated from <source> (<date>)` 섹션의 형식을 여기서 한 번만 정한다.
+Every target doc instructs you to write a `## Migrated from <source> (<date>)` section. The format is defined here, once.
 
-- `<source>` 는 입력받은 소스 토큰(`claude`·`codex`·`cursor`·`grok`)을 **소문자 그대로** 쓴다. 제품 정식 명칭으로 바꾸지 않는다.
-- `<date>` 는 **`YYYY-MM-DD`** 형식이다. run-id(`YYYYMMDD-HHMMSS`)와 형식이 다른 것은 의도된 것이다 — 헤딩은 사람이 읽는 자리이고 run-id 는 리포트 제목에 이미 있다.
-- 소스 규칙 파일마다 **`### <파일명>` 하위 헤딩을 붙인다. 파일이 하나뿐이어도 붙인다** — 개수에 따라 형식이 달라지면 어디서 온 규칙인지 추적할 수 없고, 실행마다 결과가 달라진다.
-- 파일 순서는 소스 도구가 실제로 로드하는 순서를 따른다(소스 문서에 명시가 없으면 파일명 알파벳순).
-- 소스 본문에 더 상위 레벨 헤딩(`# ...`)이 있어도 **본문은 원문 그대로 두고 레벨을 조정하지 않는다.** 헤딩 레벨 역전은 허용되며 원문 보존이 우선이다.
+- `<source>` is the source token you were given (`claude`, `codex`, `cursor`, `grok`) in **lowercase, verbatim**. Do not expand it into the product's formal name.
+- `<date>` is **`YYYY-MM-DD`**. The difference from the run-id format (`YYYYMMDD-HHMMSS`) is deliberate — the heading is for humans to read, and the run-id is already in the report title.
+- Give every source rule file its own **`### <filename>` subheading. Add it even when there is only one file** — a format that changes with the file count makes rules untraceable and produces different output run to run.
+- Order files the way the source tool actually loads them (alphabetical by filename when the source doc does not say).
+- If the source body contains higher-level headings (`# ...`), **leave the body verbatim and do not adjust heading levels.** Inverted heading levels are acceptable; preserving the original takes priority.
 
 ## Step 5: Report
 
-`.migrate/<run-id>/migration-report.md` 를 작성하고 같은 내용을 사용자에게 요약 출력한다. 형식:
+Write `.migrate/<run-id>/migration-report.md` and print the same content to the user as a summary. Format:
 
 ```markdown
 # Migration Report: <source> → <target> (<run-id>)
 
-## 스캔 결과
-| 카테고리 | 발견 | 자동 | 근사 | 제안 | 불가 |
+## Scan summary
+| Category | Found | Automatic | Approximate | Suggestion | Impossible |
 |---|---|---|---|---|---|
-- 체크리스트 10개 카테고리를 **전부** 한 행씩 쓴다. 발견 0건인 카테고리도 `0` 으로 남긴다(Step 1 의 "침묵 금지" 가 여기서 지켜진다).
+- Write **all ten** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
 
-## 이관 완료 (자동)
-- <카테고리>: <항목> → <타겟 위치>
+## Migrated (automatic)
+- <category>: <item> → <target location>
 
-## 근사 매핑 (확인 권장)
-- <항목>: <무엇이 어떻게 근사되었는지>
+## Approximated (review recommended)
+- <item>: <what was approximated and how>
 
-## 수동 조치 필요
-- <항목> (<소스 파일 경로>): <사용자가 해야 할 일> (시크릿 재입력 항목은 키 이름·위치만)
+## Manual action required
+- <item> (<source file path>): <what the user must do> (for secret re-entry, key name and location only)
 
-## 이관하지 않음
-- <항목> (<소스 파일 경로>): <사유> (비활성 서버·키바인딩·세션·auth 등)
+## Not migrated
+- <item> (<source file path>): <reason> (disabled server, keybinding, session, auth, etc.)
 
-각 항목에는 소스 파일 경로(예: `keybindings.json`, `config.toml`의 서버명)를 반드시 포함한다. 이관하지 않은 설정값(모델명 등)은 **현재 값을 그대로 인용**한다 — 범주만 적고 값을 생략하지 않는다. 승인/샌드박스 정책 제안에는 **소스 쪽 필드명과 현재 값**, 그리고 **타겟 쪽 대응 개념명과 제안 값**을 함께 적는다(예: Codex 는 `approval_policy`·`sandbox_mode`, Claude 는 `permissions.defaultMode`, Cursor 는 `approvalMode`, Grok 은 `[ui] permission_mode`). 어느 쪽이 소스인지에 따라 두 이름의 역할이 바뀐다.
+Every entry must include the source file path (for example `keybindings.json`, or the server name in `config.toml`). For settings you did not migrate (model name and the like), **quote the current value verbatim** — never name the category and omit the value. For approval/sandbox policy suggestions, give **the source-side field name with its current value** and **the target-side concept name with the suggested value** together (Codex uses `approval_policy` and `sandbox_mode`, Claude `permissions.defaultMode`, Cursor `approvalMode`, Grok `[ui] permission_mode`). Which name plays which role depends on which tool is the source.
 
-## 검증
-- <실행한 확인 명령과 결과>
+## Verification
+- <the checks you ran and their results>
 ```
 
-리포트에는 시크릿 원문을 절대 쓰지 않는다(security.md).
+Never write a secret's literal value in the report (security.md).
 
-## 승인/샌드박스 정책 근사 매핑표 (참고용 — 자동 적용 금지, 항상 제안만)
+## Approval/sandbox policy approximation table (reference only — never auto-apply, suggest only)
 
-| 자동화 강도 | Codex approval_policy + sandbox | Claude defaultMode | Cursor approvalMode | Grok permission_mode |
+| Automation level | Codex approval_policy + sandbox | Claude defaultMode | Cursor approvalMode | Grok permission_mode |
 |---|---|---|---|---|
-| 1 — 확인 위주 | untrusted / read-only | default | allowlist | default(ask) |
-| 2 — 편집 자동 수용 | on-request / workspace-write | acceptEdits | auto-review | acceptEdits |
-| 3 — 전면 허용 | never / danger-full-access | bypassPermissions | unrestricted | bypassPermissions |
+| 1 — mostly asks | untrusted / read-only | default | allowlist | default(ask) |
+| 2 — auto-accepts edits | on-request / workspace-write | acceptEdits | auto-review | acceptEdits |
+| 3 — fully permissive | never / danger-full-access | bypassPermissions | unrestricted | bypassPermissions |
 
-**표에 실린 값은** 열마다 한 번씩만 등장한다 — 소스 값이 표에 있으면 역방향 조회가 유일하게 결정된다. 다만 **이 표는 각 도구의 값 공간 전체를 담지 않는다.** 예컨대 Grok `permission_mode` 는 `auto`·`dontAsk`·`plan` 을 더 갖지만 다른 도구에 대응 개념이 확인되지 않아 행이 없다. 표에 없는 값을 만나면 추측해서 끼워 맞추지 말고, 소스 값과 "대응 행 없음"을 리포트에 적은 뒤 타겟 값을 제안하지 않는다.
+**Each value listed here appears once per column** — if the source value is in the table, the reverse lookup is uniquely determined. But **this table does not cover every tool's full value space.** Grok's `permission_mode`, for example, also has `auto`, `dontAsk`, and `plan`, which have no row because no corresponding concept in the other tools has been confirmed. When you hit a value that is not in the table, do not force a match: record the source value and "no corresponding row" in the report, and suggest no target value.
 
-이 표는 각 도구의 자동화 강도를 같은 순서로 늘어놓은 것이지, 도구 간 동작이 동일하다는 뜻이 아니다. Cursor `allowlist` 와 `auto-review` 의 차이는 분류기 사용 여부이고(allowlist 는 결정적, auto-review 는 허용목록 밖 명령을 샌드박스·분류기로 넘긴다), Claude 모드와의 대응은 리서치로 확정된 바 없다. 그래서 **자동 적용이 금지된 제안 전용 표**다.
+This table lines up each tool's automation levels in the same order; it does not claim the behaviors are identical. Cursor's `allowlist` and `auto-review` differ in whether a classifier is used (allowlist is deterministic; auto-review routes non-allowlisted commands through a sandbox and a classifier), and the correspondence to Claude's modes has never been confirmed by research. That is why this is a **suggestion-only table that must never be auto-applied**.

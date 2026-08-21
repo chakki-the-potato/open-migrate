@@ -1,125 +1,125 @@
 # open-migrate
 
-AI 코딩 도구를 갈아탈 때 설정을 한 번에 옮긴다. 규칙·MCP 서버·스킬·서브에이전트·훅·권한을 소스 도구에서 읽어 목적지 도구의 형식으로 변환한다.
+Move your settings in one step when you switch AI coding tools. It reads rules, MCP servers, skills, subagents, hooks, and permissions from the source tool and converts them into the destination tool's format.
 
-지원 도구는 **Claude Code · Codex CLI · Cursor · Grok Build** 넷이고, 방향은 12가지다.
+Four tools are supported — **Claude Code, Codex CLI, Cursor, and Grok Build** — for 12 possible directions.
 
-## 어떻게 동작하나
+## How it works
 
-방향별 변환기를 12개 만들지 않는다. 도구마다 "내 설정을 읽는 법 + 내게 쓰는 법" 을 적은 지식 문서 하나씩만 두고, AI 가 소스 문서와 목적지 문서를 조합해 변환한다. 도구를 하나 추가하면 문서 하나가 늘고 방향은 2N 개가 늘어난다.
+There are no 12 per-direction converters. Each tool gets a single knowledge doc describing "how to read my config" and "how to write into me", and the AI combines the source doc with the destination doc to do the conversion. Adding a tool adds one doc and 2N directions.
 
 ```
 core/
-  procedure.md      5단계 절차 (Scan → Plan → Confirm → Apply → Report)
-  security.md       시크릿 탐지·처리 정책
-  tools/*.md        도구별 지식 문서 (읽기 규칙 + 쓰기 규칙 양면)
-adapters/*/SKILL.md 도구별 진입점 (목적지만 다른 얇은 껍데기)
+  procedure.md      the 5-step procedure (Scan → Plan → Confirm → Apply → Report)
+  security.md       secret detection and handling policy
+  tools/*.md        per-tool knowledge docs (read rules and write rules, both sides)
+adapters/*/SKILL.md per-tool entry points (thin shells that differ only in destination)
 ```
 
-## 설치
+## Install
 
-### Claude Code · Codex CLI — 플러그인
+### Claude Code and Codex CLI — plugin
 
 ```
 /plugin marketplace add chakki-the-potato/open-migrate
 /plugin install migrate@migrate-marketplace
 ```
 
-두 도구가 같은 패키지를 무변환으로 설치한다. 플러그인 배포본은 실행 중인 도구를 스스로 판정해 목적지로 삼는다.
+Both tools install the same package without conversion. The plugin distribution determines which tool it is running in and uses that as the destination.
 
-### Cursor · Grok Build — 설치 스크립트
+### Cursor and Grok Build — install script
 
 ```
 git clone https://github.com/chakki-the-potato/open-migrate.git
 cd open-migrate
 ./install.sh cursor    # → ~/.cursor/skills/migrate
-./install.sh grok      # → ~/.grok/skills/migrate  (GROK_HOME 존중)
+./install.sh grok      # → ~/.grok/skills/migrate  (honors GROK_HOME)
 ```
 
-`./install.sh claude`, `./install.sh codex` 도 있다. 플러그인을 쓰지 않고 개인 스킬로 설치하고 싶을 때 쓴다.
+`./install.sh claude` and `./install.sh codex` exist too, for installing as a personal skill instead of a plugin.
 
-## 사용법
+## Usage
 
 ```
-/migrate codex          소스를 명시
-/migrate                자동 감지 — 설치된 도구를 찾아 고르게 한다
+/migrate codex          name the source explicitly
+/migrate                auto-detect — finds installed tools and lets you choose
 ```
 
-자연어도 된다. "코덱스 설정 옮겨줘" 처럼 말해도 문장 안의 도구 이름을 읽는다.
+Natural language works as well: say "migrate my codex settings over" and it picks the tool name out of the sentence.
 
-실행하면 계획표를 보여주고 **승인을 받기 전에는 아무것도 쓰지 않는다.** 승인 후 `<타겟 홈>/.migrate/<run-id>/migration-report.md` 에 무엇이 어떻게 옮겨졌는지 남는다.
+A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
-## 검증된 방향
+## Verified directions
 
-각 방향은 픽스처를 실제로 이관한 뒤 결정적 검증기로 채점했다. 아래는 실측 결과다.
+Each direction was scored by a deterministic verifier after actually migrating a fixture. These are measured results.
 
-| 방향 | 체크 | 결과 |
+| Direction | Checks | Result |
 |---|---|---|
-| Codex → Claude | 64 | 통과 |
-| Claude → Codex | 54 | 통과 |
-| Claude → Cursor | 57 | 통과 |
-| Cursor → Claude | 59 | 통과 |
-| Claude → Grok | 61 | 통과 |
-| Grok → Claude | 61 | 통과 |
-| Codex → Cursor | 58 | 통과 |
+| Codex → Claude | 64 | pass |
+| Claude → Codex | 54 | pass |
+| Claude → Cursor | 57 | pass |
+| Cursor → Claude | 59 | pass |
+| Claude → Grok | 61 | pass |
+| Grok → Claude | 61 | pass |
+| Codex → Cursor | 58 | pass |
 
-나머지 5방향(Codex↔Grok, Cursor↔Grok, Cursor→Codex)은 같은 구조로 커버되지만 실측하지 않았다. Codex → Cursor 가 **새 픽스처도 새 검증기도 없이** 기존 산출물 조합만으로 통과한 것이 조합 가능성의 근거다.
+The remaining five directions (Codex↔Grok, Cursor↔Grok, Cursor→Codex) are covered by the same structure but have not been measured. The evidence for composability is that Codex → Cursor passed **with no new fixture and no new verifier** — purely by combining existing artifacts.
 
-직접 돌려보려면:
-
-```
-./scripts/verify-migration.sh <타겟 루트> <타겟 도구> <소스 도구>
-```
-
-## 이관되지 않는 것
-
-**인증 정보는 옮기지 않는다.** API 키·토큰·`auth.json`·크레덴셜 파일은 읽지도 복사하지도 않는다. 설정 안에 들어 있는 시크릿(MCP 헤더의 API 키 등)은 `<REDACTED-REENTER>` 로 치환하고, 어떤 키를 어디에 다시 넣어야 하는지만 리포트에 남긴다.
-
-그 밖에 옮기지 않는 것.
-
-- **모델 설정** — 도구마다 모델명이 다르다. 현재 값을 리포트에 인용해 안내만 한다.
-- **승인 정책·샌드박스** — 대응 개념은 있지만 의미가 달라 자동 적용하지 않는다. 제안만 한다.
-- **단축키·세션 기록·앱 상태** — 설정이 아니거나 이식 대상이 아니다.
-- **계정에 저장된 설정** — Cursor 의 User Rules 처럼 디스크에 없는 것은 원문을 수동 조치 목록에 실어 직접 붙여넣게 안내한다.
-
-## 손실이 생기는 지점
-
-권한 모델은 도구마다 표현력이 달라 근사가 불가피하다.
-
-- Cursor 에는 `ask` 티어가 없다. 다른 도구의 ask 규칙은 allow 나 deny 어디에도 넣지 않고(둘 다 원래 의미를 왜곡한다) 수동 조치로 넘긴다.
-- Codex 권한은 argv 접두사 DSL 이라 경로·도메인·MCP 규칙을 표현할 수 없다. 변환하지 않고 원문을 그대로 넘긴다.
-- Cursor 에는 전역 env 주입 표면이 없다. 키 이름과 소스 위치를 기록해 직접 옮기게 안내한다.
-- 훅 도구 매처가 다대일로 합쳐지는 구간이 있다(Claude `Edit`·`Write` → Cursor `Write`). 역방향은 유일하게 복원되지 않아 `Edit|Write` 로 되돌린다.
-
-이런 항목은 전부 리포트의 "근사 매핑" 또는 "수동 조치" 섹션에 무엇이 어떻게 손실됐는지와 함께 남는다.
-
-## 안전 보장
-
-- **승인 전 무쓰기.** Confirm 단계에서 계획표를 승인받기 전에는 어떤 파일도 건드리지 않는다.
-- **덮어쓰지 않고 병합.** 기존 설정을 지우지 않는다. 수정 전 원본을 `.migrate/<run-id>/backup/` 에 복사하고, 쓰기 후 파싱에 실패하면 백업에서 복원한 뒤 중단한다.
-- **재실행 안전.** `.migrate/ledger.json` 에 이관한 소스 파일의 sha256 을 기록한다. 같은 설정을 다시 돌려도 중복 병합되지 않는다.
-- **동명 충돌은 건너뛴다.** 타겟에 같은 이름의 스킬·서브에이전트·MCP 서버가 있으면 덮어쓰지 않고 리포트에 남긴다.
-
-## 개발
-
-`skills/` 는 **빌드 산출물**이다. 정본은 `adapters/plugin/SKILL.md` 와 `core/` 이고, 플러그인 로더가 루트의 `skills/` 를 찾기 때문에 저장소에 커밋해둔다.
+To run it yourself:
 
 ```
-./scripts/build-plugin.sh           배포본 재생성
-./scripts/build-plugin.sh --check   정본과 어긋나면 exit 1 (커밋 전 확인)
-claude plugin validate . --strict   매니페스트 검증
+./scripts/verify-migration.sh <target root> <target tool> <source tool>
 ```
 
-`core/` 나 `adapters/plugin/SKILL.md` 를 고쳤으면 빌드를 다시 돌린다. 도구 홈에 설치된 사본도 낡으므로 `./install.sh <dest>` 를 다시 실행해야 한다.
+## What is not migrated
 
-새 도구를 추가하려면 `core/tools/_template.md` 를 채워 지식 문서를 만들고, 픽스처 하나와 타겟 검증기 하나, 소스 체크 하나를 추가한다. 방향별로 만들 것은 없다.
+**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an MCP header, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
 
-## 알려진 제약
+Also not migrated:
 
-- **Grok Build 는 실기기에서 검증되지 않았다.** 개발 환경에 Grok Build 가 설치돼 있지 않아, `~/.grok/skills/migrate` 에 설치되는 것까지는 확인했지만 Grok 이 그 스킬을 실제로 로드하는지는 확인하지 못했다. 파일 변환 자체는 양방향 61/61 로 검증됐다.
-- 지식 문서는 2026년 8월 기준 각 도구의 설정 표면을 반영한다. 도구가 포맷을 바꾸면 해당 문서를 고쳐야 한다.
-- 같은 이름의 커뮤니티 CLI `superagent-ai/grok-cli` 는 설정 저장 위치가 완전히 다르다(`~/.grok/user-settings.json`). 이 도구는 xAI 공식 **Grok Build** 만 다루며, 감지 단계에서 구분한다.
+- **Model settings** — model names differ per tool. The current value is quoted in the report as guidance only.
+- **Approval policy and sandbox** — a corresponding concept exists but its meaning differs, so nothing is applied automatically. You get a suggestion.
+- **Keybindings, session history, app state** — either not configuration or not portable.
+- **Account-stored settings** — things that do not live on disk, such as Cursor's User Rules, go into the manual-action list with their original text so you can paste them in.
 
-## 라이선스
+## Where loss happens
+
+Permission models differ in expressiveness, so approximation is unavoidable.
+
+- Cursor has no `ask` tier. Another tool's ask rules go into neither allow nor deny (both distort the original meaning) — they are handed off as manual actions.
+- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP rules. Those are passed through verbatim instead of converted.
+- Cursor has no global env injection surface. The key names and their source locations are recorded so you can move them yourself.
+- Some hook tool matchers merge many-to-one (Claude `Edit` and `Write` → Cursor `Write`). The reverse has no unique restoration, so it is restored as `Edit|Write`.
+
+All of these land in the report's "Approximated" or "Manual action required" section, together with exactly what was lost and how.
+
+## Safety guarantees
+
+- **No writes before approval.** Nothing is touched until you approve the plan table in the Confirm step.
+- **Merge, never overwrite.** Existing settings are not deleted. Originals are copied to `.migrate/<run-id>/backup/` before modification, and if parsing fails after a write, the backup is restored and the run stops.
+- **Safe to re-run.** `.migrate/ledger.json` records the sha256 of every migrated source file, so running the same migration again does not merge anything twice.
+- **Name collisions are skipped.** If the target already has a skill, subagent, or MCP server with the same name, it is left alone and recorded in the report.
+
+## Development
+
+`skills/` is a **build artifact**. The sources of truth are `adapters/plugin/SKILL.md` and `core/`; it is committed because the plugin loader looks for `skills/` at the repository root.
+
+```
+./scripts/build-plugin.sh           regenerate the distribution
+./scripts/build-plugin.sh --check   exit 1 if it drifted from the sources (pre-commit check)
+claude plugin validate . --strict   validate the manifests
+```
+
+After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
+
+To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc, then add one fixture, one target verifier, and one source check. Nothing is built per direction.
+
+## Known limitations
+
+- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified at 61/61 in both directions.
+- The knowledge docs reflect each tool's config surface as of August 2026. If a tool changes its format, the corresponding doc needs updating.
+- The similarly named community CLI `superagent-ai/grok-cli` stores its configuration somewhere else entirely (`~/.grok/user-settings.json`). This tool targets xAI's official **Grok Build** only and distinguishes the two during detection.
+
+## License
 
 MIT

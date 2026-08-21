@@ -1,96 +1,96 @@
 # Grok Build (xAI)
 
-홈: `~/.grok` (`GROK_HOME` 환경변수로 재지정 가능). 메인 설정은 `~/.grok/config.toml` 하나이며 규칙·스킬·서브에이전트·훅만 별도 디렉토리를 쓴다. 이 문서는 소스로 읽을 때와 타겟으로 쓸 때 모두 사용한다.
+Home: `~/.grok` (relocatable via the `GROK_HOME` environment variable). The main config is a single `~/.grok/config.toml`; only rules, skills, subagents, and hooks use separate directories. Use this doc both when reading Grok as a source and when writing to it as a target.
 
-대상은 xAI 공식 **Grok Build**(`grok`)다. 이름이 비슷한 커뮤니티 CLI(`superagent-ai/grok-cli`, npm `grok-dev`)는 설정 저장 위치가 완전히 다르다(`~/.grok/user-settings.json` 의 `mcp.servers`·`hooks`) — **이 문서를 그 도구에 적용하지 마라.** 홈에 `config.toml` 없이 `user-settings.json` 만 있으면 Grok Build 가 아니므로 중단하고 사용자에게 알린다.
+This doc covers xAI's official **Grok Build** (`grok`). The similarly named community CLI (`superagent-ai/grok-cli`, npm `grok-dev`) stores its configuration somewhere else entirely (`mcp.servers` and `hooks` inside `~/.grok/user-settings.json`) — **do not apply this doc to that tool.** If the home has `user-settings.json` but no `config.toml`, it is not Grok Build: stop and tell the user.
 
-Grok Build 는 다른 도구의 합집합처럼 생겼다 — **훅과 권한은 Claude 와 같은 모양**이고 **MCP 와 env 주입은 Codex 와 같은 모양**이다. 변환 규칙 대부분이 "그대로 옮긴다" 인 이유가 이것이다.
+Grok Build looks like a union of the other tools — **hooks and permissions have Claude's shape**, while **MCP and env injection have Codex's shape**. That is why most conversion rules here amount to "carry it over unchanged".
 
-## 감지
+## Detection
 
-`~/.grok/config.toml` 존재 시 설치된 것으로 판단. `GROK_HOME` 이 설정돼 있으면 그 경로를 홈으로 쓴다.
+Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, use that path as the home.
 
-## 설정 인벤토리 (읽기)
+## Config inventory (read)
 
-| 카테고리 | 위치 | 포맷 |
+| Category | Location | Format |
 |---|---|---|
-| 전역 규칙 | `~/.grok/rules/*.md` 전부(파일명 무관, 알파벳순 로드) + `~/.grok/AGENTS.md` | markdown 평문. 홈에서 인식되는 named 파일은 `AGENTS.md`·`AGENT.md`·`CLAUDE.md`·`CLAUDE.local.md` 등이다 — **`GROK.md` 는 읽지 않는다** |
-| MCP | `~/.grok/config.toml` `[mcp_servers.<name>]` | TOML. Codex 와 같은 모양: stdio 는 `command`/`args` + 하위 테이블 `[mcp_servers.<name>.env]`, remote 는 `url` + `[mcp_servers.<name>.http_headers]`. `enabled = false` 로 비활성 |
-| 스킬 | `~/.grok/skills/<name>/SKILL.md` | agent-skills 표준 레이아웃(지원 파일 포함). frontmatter `user-invocable: true` 면 슬래시 명령으로 노출 |
-| 커맨드/프롬프트 | **표면 없음** | 전용 커맨드 디렉토리가 없다 — 슬래시 명령은 스킬로 만든다 |
-| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter(**camelCase**) + 본문(시스템 프롬프트). 필수 `name`·`description`. 선택 필드 전체: `model`·`tools`·`color`·`promptMode`(`extend`\|`full`)·`capabilityMode`·`permissionMode`·`disallowedTools`·`effort`·`maxTurns`·`isolation`·`background`·`skills`·`discoverSkills`·`inheritSkills`·`agentsMd`·`injectDefaultTools`·`initialPrompt`·`mcpServers`. **이 표가 Grok 필드의 유일한 목록이다** — 다른 절에서 목록을 다시 나열하지 않고 이 행을 참조한다 |
-| 훅 | `~/.grok/hooks/*.json` (그리고 `config.toml` 인라인) | **JSON 구조가 Claude Code 와 같다**: `{"hooks": {"<Event>": [{"matcher": "...", "hooks": [{"type": "command", "command": "...", "timeout": 10}]}]}}`. 이벤트명도 PascalCase. `timeout` 단위는 초 |
-| 권한 규칙 | `~/.grok/config.toml` `[permission]` | 두 형태가 있다. (1) 컴팩트 문자열 배열 `allow`/`ask`/`deny` — 규칙 문자열이 **Claude 와 같은 문법**(`Bash(git status:*)`, `Read(src/**)`, `Edit(**/*.rs)`, `Grep`, `WebFetch(domain:example.com)`, `MCPTool(server__tool)`). (2) 구조적 `rules = [{ action = "allow\|deny\|ask", tool = "bash\|read\|edit\|grep\|mcp\|webfetch\|websearch", pattern = "git *" }]`. 병합 우선순위는 deny > ask > allow |
-| env 주입 | `~/.grok/config.toml` `[shell_environment_policy]` | Codex 와 같은 테이블명·구조. 주입할 값은 하위 테이블 `[shell_environment_policy.set]` |
-| 승인 정책 | `~/.grok/config.toml` `[ui] permission_mode` | 값: `default`(ask)·`acceptEdits`·`auto`·`dontAsk`·`bypassPermissions`(제품명 always-approve)·`plan`. procedure.md 매핑표에는 이 중 3개만 대응 행이 있다 — 나머지는 제안값 없이 현재 값만 인용한다 |
-| 샌드박스 | `~/.grok/config.toml` `[sandbox] profile` (커스텀 프로파일은 `~/.grok/sandbox.toml` `[profiles.<name>]`) | 값: `off`·`workspace`·`devbox`·`read-only`·`strict`. **이관하지 않는다** — OS 수준 격리라 도구마다 의미가 달라 등가 매핑이 없다. 현재 값을 인용해 리포트에만 남긴다 |
-| 모델 | `~/.grok/config.toml` `model` | 이관하지 않음 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
-| 읽지 말 것 | `~/.grok/auth.json`, `~/.grok/sessions/`, `~/.grok/memory/` | security.md 적용. `memory/` 는 평문 markdown 이라 기술적으로는 복사 가능하지만 설정이 아니라 대화 내용이므로 **기본 제외**한다 |
+| Global rules | every `~/.grok/rules/*.md` (any filename, loaded alphabetically) plus `~/.grok/AGENTS.md` | Plain markdown. The named files recognized in the home are `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CLAUDE.local.md`, and similar — **`GROK.md` is not read** |
+| MCP | `[mcp_servers.<name>]` in `~/.grok/config.toml` | TOML, same shape as Codex: stdio uses `command`/`args` plus the sub-table `[mcp_servers.<name>.env]`; remote uses `url` plus `[mcp_servers.<name>.http_headers]`. `enabled = false` marks it disabled |
+| Skills | `~/.grok/skills/<name>/SKILL.md` | agent-skills standard layout including supporting files. Frontmatter `user-invocable: true` exposes the skill as a slash command |
+| Commands / prompts | **No surface** | There is no dedicated command directory — slash commands are built as skills |
+| Subagents | `~/.grok/agents/<name>.md` | YAML frontmatter (**camelCase**) plus the body (system prompt). Required: `name`, `description`. Full set of optional fields: `model`, `tools`, `color`, `promptMode` (`extend`\|`full`), `capabilityMode`, `permissionMode`, `disallowedTools`, `effort`, `maxTurns`, `isolation`, `background`, `skills`, `discoverSkills`, `inheritSkills`, `agentsMd`, `injectDefaultTools`, `initialPrompt`, `mcpServers`. **This row is the single list of Grok's fields** — other sections reference it instead of repeating the list |
+| Hooks | `~/.grok/hooks/*.json` (and inline in `config.toml`) | **The JSON structure is identical to Claude Code's**: `{"hooks": {"<Event>": [{"matcher": "...", "hooks": [{"type": "command", "command": "...", "timeout": 10}]}]}}`. Event names are PascalCase too. `timeout` is in seconds |
+| Permission rules | `[permission]` in `~/.grok/config.toml` | Two forms. (1) Compact string arrays `allow`/`ask`/`deny`, where the rule strings use **Claude's syntax** (`Bash(git status:*)`, `Read(src/**)`, `Edit(**/*.rs)`, `Grep`, `WebFetch(domain:example.com)`, `MCPTool(server__tool)`). (2) Structured `rules = [{ action = "allow\|deny\|ask", tool = "bash\|read\|edit\|grep\|mcp\|webfetch\|websearch", pattern = "git *" }]`. Merge precedence is deny > ask > allow |
+| Env injection | `[shell_environment_policy]` in `~/.grok/config.toml` | Same table name and structure as Codex. Injected values go in the sub-table `[shell_environment_policy.set]` |
+| Approval policy | `[ui] permission_mode` in `~/.grok/config.toml` | Values: `default` (ask), `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions` (product name: always-approve), `plan`. Only three of these have a row in procedure.md's mapping table — for the rest, quote the current value and suggest nothing |
+| Sandbox | `[sandbox] profile` in `~/.grok/config.toml` (custom profiles in `[profiles.<name>]` of `~/.grok/sandbox.toml`) | Values: `off`, `workspace`, `devbox`, `read-only`, `strict`. **Not migrated** — this is OS-level isolation whose meaning differs per tool, so no equivalent mapping exists. Quote the current value in the report only |
+| Model | `model` in `~/.grok/config.toml` | Not migrated — quote the key and its **current value** verbatim in the report |
+| Never read | `~/.grok/auth.json`, `~/.grok/sessions/`, `~/.grok/memory/` | security.md applies. `memory/` is plain markdown and technically copyable, but it is conversation content rather than configuration, so it is **excluded by default** |
 
-## 변환 규칙 (Grok → 다른 도구)
+## Conversion rules (Grok → other tools)
 
-### 전역 규칙
-- `rules/*.md` 와 `AGENTS.md` 를 모두 읽어 타겟의 전역 규칙 파일에 원문 그대로 병합(요약·재작성 금지). 병합 섹션·하위 헤딩 형식은 procedure.md 의 "전역 규칙 병합 형식" 을 따른다. Grok 의 로드 순서는 **파일명 알파벳순**이다.
-- `@경로` import 줄은 펼치지 말고 원문 그대로 옮긴다.
-- `GROK.md` 처럼 Grok 이 인식하지 않는 파일명은 **이관 대상이 아니다** — 발견해도 옮기지 말고 "Grok 이 읽지 않는 파일" 로만 리포트에 기록한다.
+### Global rules
+- Read both `rules/*.md` and `AGENTS.md` and merge them verbatim into the target's global rule file (never summarize or rewrite). For the merge section and subheading format, follow procedure.md's "Global-rule merge format". Grok's load order is **alphabetical by filename**.
+- Carry `@path` import lines over verbatim; never expand them.
+- Filenames Grok does not recognize, such as `GROK.md`, are **not migration targets** — if you find one, do not move it; record it in the report as "a file Grok does not read".
 
 ### MCP
-- `[mcp_servers.<name>]` → 타겟 MCP 형식. Codex 와 테이블 모양이 같으므로 codex.md 의 MCP 변환 규칙을 그대로 적용한다.
-- `enabled = false` 서버는 이관하지 않고 리포트에 기록.
-- `[mcp_servers.<name>.http_headers]` 와 `.env` 값은 security.md 시크릿 탐지 대상.
+- `[mcp_servers.<name>]` → the target's MCP format. The table shape matches Codex, so apply codex.md's MCP conversion rules directly.
+- Do not migrate servers with `enabled = false`; record them in the report.
+- Values in `[mcp_servers.<name>.http_headers]` and `.env` are subject to security.md secret detection.
 
-### 스킬
-- `SKILL.md` 디렉토리를 지원 파일까지 그대로 복사.
-- `user-invocable: true` 는 Grok 전용 frontmatter 키다. 타겟이 같은 키를 쓰지 않으면 **그 키만 드롭하고 나머지 frontmatter 와 본문은 유지**한 뒤 리포트에 기록한다.
-- 타겟 문서가 스킬을 "디렉토리째 복사" 로 규정하더라도 **이 키 드롭이 우선한다.** 일반 규칙(무변형 복사)과 특정 규칙(이 키는 타겟에서 무효)이 부딪히면 특정 규칙을 따른다 — 다른 카테고리에서도 같다.
+### Skills
+- Copy the `SKILL.md` directory including supporting files, unchanged.
+- `user-invocable: true` is a Grok-specific frontmatter key. If the target does not use the same key, **drop only that key and keep the rest of the frontmatter and the body**, then record it in the report.
+- **This key drop wins even when the target doc says to "copy the whole directory".** When a general rule (copy unchanged) collides with a specific one (this key is invalid on the target), follow the specific rule — the same holds in every other category.
 
-### 서브에이전트
-- frontmatter 가 camelCase 다. `name`·`description` 은 어느 도구에서나 공통이므로 그대로 매핑한다.
-- `model` 은 값 공간이 도구마다 다르다 — 타겟 문서의 서브에이전트 규칙을 따른다(`inherit` 처럼 양쪽 공통인 값만 그대로 옮기고, 나머지는 드롭 후 리포트).
-- `tools`·`color` 는 타겟에 같은 이름의 필드가 있을 때만 옮긴다(Claude 는 둘 다 있다).
-- **나머지 필드는 위 인벤토리 행의 목록에서 파생한다** — `name`·`description`·`model`·`tools`·`color` 를 뺀 전부가 Grok 쪽에만 있는 필드이므로, 타겟에 같은 이름의 필드가 없으면 드롭하고 리포트에 키 이름을 남긴다. 목록을 여기 다시 적지 않는 이유는 두 곳에 적으면 갈라지기 때문이다 — 판단 기준은 언제나 "타겟 문서에 그 필드가 있는가" 하나다.
+### Subagents
+- The frontmatter is camelCase. `name` and `description` are common to every tool, so map them directly.
+- `model` has a different value space per tool — follow the target doc's subagent rule (carry over only values both sides share, such as `inherit`; drop the rest and record in the report).
+- Carry `tools` and `color` only when the target has a field of the same name (Claude has both).
+- **Derive the rest from the inventory row above** — everything other than `name`, `description`, `model`, `tools`, and `color` is Grok-only, so drop it when the target has no field of the same name and record the key name in the report. The list is not repeated here because two copies drift apart; the test is always the single question "does the target doc have this field?"
 
-### 훅
-- **구조 변환이 필요 없다.** Grok 훅 파일의 `hooks` 객체는 Claude `settings.json` 의 `hooks` 값과 같은 모양이다 — Claude 가 타겟이면 그 객체를 꺼내 그대로 병합한다.
-- Grok 이벤트 15종: `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`, `StopFailure`, `StopCancelled`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `SubagentStart`, `SubagentStop`, `Notification`, `PreCompact`, `PostCompact`.
-- 이벤트 처리는 **타겟 문서를 따른다** — Claude 는 이벤트명이 같아 무변환이고(claude.md 훅 행의 유효 이벤트 규칙 적용), Codex 는 공식 11개 밖을 드롭하며(codex.md), Cursor 는 camelCase 8개로 변환한다(cursor.md). 위 15종에 없는 이벤트명은 추측하지 말고 드롭 후 기록.
-- `type` 은 `command` 와 `http` 두 가지다. `http` 타입은 다른 도구에 등가물이 없다 — 드롭 후 리포트.
-- 매처는 도구명이며 Claude 와 같은 이름(`Bash`·`Read`·`Edit`·`Write`·`Grep`)을 쓴다 — Claude 로 갈 때 무변환, 그 외 타겟은 해당 문서의 도구명 매처 매핑을 적용한다.
+### Hooks
+- **No structural conversion is needed.** The `hooks` object in a Grok hook file has the same shape as the `hooks` value in Claude's `settings.json` — when Claude is the target, extract that object and merge it as-is.
+- Grok's 15 events: `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`, `StopFailure`, `StopCancelled`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `SubagentStart`, `SubagentStop`, `Notification`, `PreCompact`, `PostCompact`.
+- Event handling **follows the target doc** — Claude shares the event names so nothing is converted (apply claude.md's valid-event rule in its hook row); Codex drops anything outside its official 11 (codex.md); Cursor converts to its 8 camelCase names (cursor.md). For an event name outside the 15 above, do not guess — drop and record.
+- `type` is either `command` or `http`. The `http` type has no equivalent in the other tools — drop and record.
+- Matchers are tool names and use Claude's names (`Bash`, `Read`, `Edit`, `Write`, `Grep`) — no conversion when going to Claude; for other targets, apply that doc's tool-name matcher mapping.
 
-### 권한 규칙
-- 컴팩트 문자열 형태(`allow`/`ask`/`deny` 배열)는 **Claude 와 문법이 같다 — 값을 그대로 옮긴다.** `ask` 티어도 양쪽에 있어 손실이 없다.
-- 구조적 형태(`rules = [{action, tool, pattern}]`)로 적혀 있으면 먼저 컴팩트 문자열로 정규화한다. `tool` 을 PascalCase 도구명으로 바꾸고(`bash`→`Bash`, `read`→`Read`, `edit`→`Edit`, `grep`→`Grep`, `webfetch`→`WebFetch`, `websearch`→`WebSearch`, `mcp`→`MCPTool`) `pattern` 을 괄호에 넣어 `<Tool>(<pattern>)` 을 만든 뒤 `action` 에 해당하는 배열에 넣는다. `pattern` 이 없으면 괄호 없이 도구명만 쓴다(`Grep`).
-- 타겟별 손실은 타겟 문서를 따른다 — Cursor 에는 `ask` 티어가 없고(cursor.md), Codex 는 Bash prefix 규칙만 표현할 수 있다(codex.md).
+### Permission rules
+- The compact string form (`allow`/`ask`/`deny` arrays) uses **the same syntax as Claude — carry the values over unchanged.** The `ask` tier exists on both sides, so nothing is lost.
+- If they are written in the structured form (`rules = [{action, tool, pattern}]`), normalize to compact strings first. Convert `tool` to its PascalCase tool name (`bash`→`Bash`, `read`→`Read`, `edit`→`Edit`, `grep`→`Grep`, `webfetch`→`WebFetch`, `websearch`→`WebSearch`, `mcp`→`MCPTool`), wrap `pattern` in parentheses to form `<Tool>(<pattern>)`, and put it in the array matching `action`. When there is no `pattern`, write the tool name alone without parentheses (`Grep`).
+- Per-target losses follow the target doc — Cursor has no `ask` tier (cursor.md), and Codex can only express Bash prefix rules (codex.md).
 
-### env 주입
-- `[shell_environment_policy.set]` → 타겟의 전역 env 표면. Codex 와 같은 구조이므로 codex.md 의 env 규칙을 그대로 적용한다.
-- Cursor 처럼 전역 env 표면이 없는 타겟으로 갈 때는 이관 불가 — 키 이름과 소스 위치를 수동 조치 목록에 기록한다.
+### Env injection
+- `[shell_environment_policy.set]` → the target's global env surface. The structure matches Codex, so apply codex.md's env rules directly.
+- For a target with no global env surface, such as Cursor, this is not migratable — record the key names and their source locations under manual action.
 
-### 승인 정책
-- `[ui] permission_mode` → procedure.md 의 근사 매핑표를 리포트 제안으로만 사용한다. 자동 설정 금지.
+### Approval policy
+- `[ui] permission_mode` → use procedure.md's approximation table as a report suggestion only. Never set it automatically.
 
-## 쓰기 규칙 (Grok이 타겟일 때)
+## Write rules (when Grok is the target)
 
-| 카테고리 | 쓰기 위치 | 방법 |
+| Category | Write location | How |
 |---|---|---|
-| 전역 규칙 | `~/.grok/AGENTS.md` | 파일 끝에 `## Migrated from <source> (<date>)` 섹션으로 **원문 그대로** 병합(요약·재작성 금지). 소스와 기존 파일의 `@import` 줄 모두 원문 유지. 기존 내용 삭제 금지. 쓰기 전 원본을 `.migrate/<run-id>/backup/AGENTS.md` 로 복사. `rules/` 에는 쓰지 않는다 — 한 파일로 모으는 편이 추적이 쉽고, `rules/*.md` 는 전부 로드되므로 어디에 써도 효력은 같다 |
-| MCP | `config.toml` `[mcp_servers.<name>]` | stdio: `command`/`args` + `[mcp_servers.<name>.env]`. remote: `url` + `[mcp_servers.<name>.http_headers]`. 시크릿 값은 `<REDACTED-REENTER>` 로 두고 수동 조치 목록에 기재. **동명 서버가 이미 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
-| 스킬 | `~/.grok/skills/<name>/` | 디렉토리째 복사(지원 파일 포함). **동명 스킬이 있으면 건너뛰고 리포트에 기록** |
-| 커맨드/프롬프트 | `~/.grok/skills/<name>/SKILL.md` (커맨드가 아니라 스킬로 이관) | Grok 에는 커맨드 표면이 없다. 소스 커맨드를 `name`/`description` frontmatter 로 감싸 스킬로 변환하고, 슬래시 명령으로 쓰려면 `user-invocable: true` 를 함께 넣는다. `name` 은 소스 파일명(확장자 제외). 소스에 `description` 이 없으면 지어내지 말고 본문 첫 문장을 그대로 쓰고 합성했다는 사실을 리포트에 기록한다. 소스의 `$1`-`$9`/`$ARGUMENTS` 치환 토큰은 원문 그대로 둔다 |
-| 서브에이전트 | `~/.grok/agents/<name>.md` | YAML frontmatter는 **camelCase** 로 쓴다. `name`·`description` 은 그대로. 소스의 스네이크·케밥 표기 키는 camelCase 로 바꾼다. 타겟에 대응 필드가 없는 소스 전용 키(Cursor `readonly`·`is_background` 등)는 드롭 후 리포트. **`color` 는 Grok 에도 있는 필드이므로 드롭하지 않는다**(위 인벤토리 행 참조). **동명 파일이 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
-| 훅 | `~/.grok/hooks/migrated.json` | 최상위 구조는 반드시 `{"hooks": {...}}`. Claude 소스면 `settings.json` 의 `hooks` 값을 **무변환으로** 넣는다. 기존 파일이 있으면 배열에 append 하고 동일 command 는 스킵. 위 이벤트 15종 밖의 이름은 드롭 후 리포트. `type` 이 `command`·`http` 가 아닌 항목도 드롭 후 리포트 |
-| 권한 | `config.toml` `[permission]` 의 `allow`/`ask`/`deny` 배열 | Claude 소스면 규칙 문자열을 **그대로** append(중복 제거). Cursor 소스면 `Shell(...)` → `Bash(...)` 로 개명한다(cursor.md 권한 규칙과 같은 개명). Codex 소스면 `prefix_rule(pattern=["git","status"], decision="allow")` → `Bash(git status:*)` 로 되돌린다 — 토큰을 공백으로 잇고 `:*` 를 붙이며, decision `prompt`→`ask`, `forbidden`→`deny` 로 매핑한다. 구조적 `rules = [...]` 형태로는 쓰지 않는다(컴팩트 배열이 소스 문법과 더 가깝다) |
-| env 주입 | `config.toml` `[shell_environment_policy.set]` | 키 단위 병합, 기존 키 보존. 값이 다른 동명 키는 자동 결정하지 않고 사용자에게 묻는다 |
-| 승인 정책 | — | `[ui] permission_mode` 를 **자동 설정하지 않는다.** 근사 매핑은 리포트 제안으로만 |
+| Global rules | `~/.grok/AGENTS.md` | Append a `## Migrated from <source> (<date>)` section at the end of the file, **verbatim** (never summarize or rewrite). Keep the `@import` lines from both the source and the existing file. Never delete existing content. Copy the original to `.migrate/<run-id>/backup/AGENTS.md` before writing. Do not write into `rules/` — a single file is easier to trace, and since every `rules/*.md` is loaded, the effect is identical wherever you write |
+| MCP | `[mcp_servers.<name>]` in `config.toml` | stdio: `command`/`args` plus `[mcp_servers.<name>.env]`. remote: `url` plus `[mcp_servers.<name>.http_headers]`. Replace secret values with `<REDACTED-REENTER>` and list them under manual action. **If a server with the same name exists, do not overwrite — skip and record in the report** |
+| Skills | `~/.grok/skills/<name>/` | Copy the whole directory including supporting files. **If a skill with the same name exists, skip and record in the report** |
+| Commands / prompts | `~/.grok/skills/<name>/SKILL.md` (migrate as a skill, not a command) | Grok has no command surface. Wrap the source command in `name`/`description` frontmatter and convert it to a skill; add `user-invocable: true` if it should be usable as a slash command. `name` is the source filename without its extension. If the source has no `description`, do not invent one — use the body's first sentence verbatim and record in the report that it was synthesized. Leave the source's `$1`-`$9` / `$ARGUMENTS` substitution tokens exactly as they are |
+| Subagents | `~/.grok/agents/<name>.md` | Write the YAML frontmatter in **camelCase**. `name` and `description` carry over unchanged. Convert snake_case or kebab-case keys from the source to camelCase. Source-only keys with no corresponding field here (Cursor's `readonly`, `is_background`) are dropped and recorded. **Do not drop `color` — Grok has that field too** (see the inventory row above). **If a file with the same name exists, do not overwrite — skip and record in the report** |
+| Hooks | `~/.grok/hooks/migrated.json` | The top-level structure must be `{"hooks": {...}}`. When the source is Claude, insert the `hooks` value from `settings.json` **without conversion**. If the file already exists, append to the arrays and skip identical commands. Drop and record any event name outside the 15 above, and any entry whose `type` is neither `command` nor `http` |
+| Permissions | the `allow`/`ask`/`deny` arrays under `[permission]` in `config.toml` | When the source is Claude, append the rule strings **verbatim** (de-duplicating). When the source is Cursor, rename `Shell(...)` → `Bash(...)` (the same rename as in cursor.md's permission rules). When the source is Codex, reverse the DSL: `prefix_rule(pattern=["git","status"], decision="allow")` → `Bash(git status:*)` — join the tokens with spaces, append `:*`, and map decisions `prompt`→`ask` and `forbidden`→`deny`. Do not write the structured `rules = [...]` form; the compact arrays stay closer to the source syntax |
+| Env injection | `[shell_environment_policy.set]` in `config.toml` | Merge per key, preserving existing keys. Never resolve a same-name key with a different value on your own — ask the user |
+| Approval policy | — | **Never set `[ui] permission_mode` automatically.** Put the approximate mapping in the report as a suggestion only |
 
-## TOML 설정 파일 병합 규칙
+## TOML config merge rules
 
-`config.toml` 은 TOML 이다. JSON 처럼 범용 병합 도구를 쓸 수 없으므로 아래를 따른다.
+`config.toml` is TOML, so the general-purpose merge tooling that works for JSON does not apply. Follow these rules.
 
-1. 수정 전 원본을 `.migrate/<run-id>/backup/config.toml` 로 복사한다.
-2. **파일 전체를 파싱해 다시 직렬화하지 않는다** — 주석과 키 순서가 사라진다. 대신 최소 편집만 한다.
-   - 새 테이블(`[mcp_servers.<name>]` 등)은 **파일 끝에 append** 한다. TOML 은 테이블 헤더 이후의 줄이 그 테이블에 속하므로, 기존 테이블 블록(`[permission]` 등)이 파일 끝에 있어도 새 헤더를 붙이면 경계가 자동으로 갈린다.
-   - 기존 테이블에 **새 키**를 추가할 때는 그 테이블 블록 안에 줄을 넣는다.
-   - 기존 **배열 값을 확장**할 때(`allow = [...]` 에 항목 추가 등)는 그 한 줄만 in-place 로 다시 쓴다. 이것은 위 "재작성하지 않는다" 의 예외가 아니라 최소 편집의 한 형태다 — 배열은 한 줄이 곧 값 전체라 그 줄 말고는 건드릴 것이 없다. 기존 원소의 순서를 유지한 채 뒤에 append 하고 중복만 제거한다.
-3. 값 인용: 문자열 값은 큰따옴표로 감싼다. 불리언·정수는 따옴표 없이 쓴다. 배열 원소가 문자열이면 각각 큰따옴표로 감싼다.
-4. 쓰기 후 TOML 유효성을 확인한다(`python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" config.toml`). 실패 시 백업을 복원하고 중단·보고한다.
+1. Copy the original to `.migrate/<run-id>/backup/config.toml` before modifying.
+2. **Never parse the whole file and re-serialize it** — that destroys comments and key order. Make minimal edits instead.
+   - **Append new tables** (`[mcp_servers.<name>]` and the like) **at the end of the file.** In TOML every line after a table header belongs to that table, so adding a new header cleanly separates it even when an existing table block (`[permission]`, say) sits at the end of the file.
+   - To add a **new key** to an existing table, insert the line inside that table's block.
+   - To **extend an existing array value** (adding entries to `allow = [...]`), rewrite that single line in place. This is not an exception to "never re-serialize" but a form of minimal editing — an array's line *is* the whole value, so there is nothing else to touch. Preserve the order of existing elements, append after them, and de-duplicate.
+3. Quoting: wrap string values in double quotes. Write booleans and integers unquoted. Quote each array element individually when the elements are strings.
+4. Validate the TOML after writing (`python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" config.toml`). On failure, restore from the backup, then stop and report.
