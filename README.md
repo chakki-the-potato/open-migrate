@@ -26,21 +26,21 @@ Both tools install the same package without conversion, but their commands diffe
 
 ```
 /plugin marketplace add chakki-the-potato/open-migrate
-/plugin install migrate@migrate-marketplace
+/plugin install open-migrate@migrate-marketplace
 ```
 
 or from the shell:
 
 ```
 claude plugin marketplace add chakki-the-potato/open-migrate
-claude plugin install migrate@migrate-marketplace
+claude plugin install open-migrate@migrate-marketplace
 ```
 
 **Codex CLI** — from the shell. It needs the full URL, and the `@marketplace` qualifier is required on install:
 
 ```
 codex plugin marketplace add https://github.com/chakki-the-potato/open-migrate
-codex plugin add migrate@migrate-marketplace
+codex plugin add open-migrate@migrate-marketplace
 ```
 
 The plugin distribution determines which tool it is running in and uses that as the destination.
@@ -48,10 +48,10 @@ The plugin distribution determines which tool it is running in and uses that as 
 **Updating** also differs. Claude Code has a one-step update; Codex has no `plugin update` — refresh the marketplace snapshot first, then reinstall.
 
 ```
-claude plugin update migrate@migrate-marketplace
+claude plugin update open-migrate@migrate-marketplace
 
 codex plugin marketplace upgrade migrate-marketplace
-codex plugin add migrate@migrate-marketplace
+codex plugin add open-migrate@migrate-marketplace
 ```
 
 ### Cursor and Grok Build — install script
@@ -59,13 +59,30 @@ codex plugin add migrate@migrate-marketplace
 ```
 git clone https://github.com/chakki-the-potato/open-migrate.git
 cd open-migrate
-./install.sh cursor    # → ~/.cursor/skills/migrate
-./install.sh grok      # → ~/.grok/skills/migrate  (honors GROK_HOME)
+./install.sh cursor    # → ~/.cursor/skills/open-migrate
+./install.sh grok      # → ~/.grok/skills/open-migrate  (honors GROK_HOME)
 ```
 
 `./install.sh claude` and `./install.sh codex` exist too, for installing as a personal skill instead of a plugin. Pick one method per tool — installing both leaves two skills named `migrate` in the same home.
 
 If Grok Build is not installed yet: `curl -fsSL https://x.ai/cli/install.sh | bash`.
+
+### Upgrading from `/migrate`
+
+The command used to be `/migrate`, which never said whether `codex` meant the source or the destination. It is now `/open-migrate` and takes both.
+
+`./install.sh` removes the old skill for you. Plugin installs need the old one removed by hand, since the plugin itself was renamed:
+
+```
+claude plugin uninstall migrate@migrate-marketplace
+claude plugin install open-migrate@migrate-marketplace
+
+codex plugin remove migrate
+codex plugin marketplace upgrade migrate-marketplace
+codex plugin add open-migrate@migrate-marketplace
+```
+
+Leaving the old one installed means two commands answer, one of them stale.
 
 ### Install status verified
 
@@ -73,27 +90,29 @@ Installation and skill loading were checked on a real machine, not just in tests
 
 | Tool | Install | Skill loads | Invoke as |
 |---|---|---|---|
-| Claude Code | plugin | verified — a live session lists `migrate` | `/migrate` |
-| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/migrate` |
-| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `migrate` | `/migrate` |
-| Grok Build | `./install.sh grok` | verified — `grok inspect` lists it | **`/user:migrate`** |
+| Claude Code | plugin | verified — a live session lists `open-migrate` | `/open-migrate` |
+| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/open-migrate` |
+| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `open-migrate` | `/open-migrate` |
+| Grok Build | `./install.sh grok` | verified — `grok inspect` lists it | `/open-migrate` |
 
-**Grok Build has a built-in `/migrate`,** so this skill is namespaced to `/user:migrate` there. `grok inspect` shows the collision explicitly.
+Grok Build has a built-in `/migrate`, which is part of why this command is named `/open-migrate` — the names no longer collide, so it stays unqualified everywhere.
 
 ### A caution about compatibility loading
 
-Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`. That means **a plugin installed for Claude also shows up inside Grok and Cursor**, namespaced (`/migrate:migrate`).
+Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`. That means **a plugin installed for Claude also shows up inside Grok and Cursor**, namespaced (`/open-migrate:open-migrate`).
 
 Prefer the entry point installed for the tool you are actually using. The plugin distribution determines its destination at runtime and asks rather than guessing when it cannot confirm which tool it is running in — but the destination-specific entry point from `./install.sh <dest>` has its destination fixed, so it cannot be confused at all.
 
 ## Usage
 
 ```
-/migrate codex          name the source explicitly
-/migrate                auto-detect — finds installed tools and lets you choose
+/open-migrate                  ask which tools
+/open-migrate codex claude     source first, then destination
 ```
 
-Natural language works as well: say "migrate my codex settings over" and it picks the tool name out of the sentence.
+Both tools are inputs, so the direction is never in doubt — and you can migrate **into a tool you have not installed yet.** Running inside Claude, you can prepare a `~/.grok` before you switch to Grok, which is usually the order people actually do it in.
+
+Natural language works as well: "move my codex settings into claude" carries the same two values.
 
 A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
@@ -200,8 +219,8 @@ After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies
 **Do not keep the plugin enabled while developing.** With both installed, two skills named `migrate` exist — the fresh one from `./install.sh` and the plugin's cache, which lags behind until you push, bump, and update. Which one loads is not predictable, and the stale copy silently lacks whatever you just wrote. Disable the plugin for the duration:
 
 ```
-claude plugin disable migrate@migrate-marketplace   # develop against ./install.sh
-claude plugin enable migrate@migrate-marketplace    # restore when done
+claude plugin disable open-migrate@migrate-marketplace   # develop against ./install.sh
+claude plugin enable open-migrate@migrate-marketplace    # restore when done
 ```
 
 This bit us during development: an end-to-end test loaded the plugin cache instead of the freshly installed docs and only passed because the agent noticed the staleness on its own.
@@ -210,7 +229,7 @@ To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc
 
 ## Known limitations
 
-- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified at 61/61 in both directions.
+- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/open-migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified at 61/61 in both directions.
 - The knowledge docs reflect each tool's config surface as of August 2026. If a tool changes its format, the corresponding doc needs updating.
 - The similarly named community CLI `superagent-ai/grok-cli` stores its configuration somewhere else entirely (`~/.grok/user-settings.json`). This tool targets xAI's official **Grok Build** only and distinguishes the two during detection.
 
