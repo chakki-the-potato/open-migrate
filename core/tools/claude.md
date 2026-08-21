@@ -32,6 +32,7 @@ Consider it installed when `~/.claude/settings.json` or `~/.claude/CLAUDE.md` ex
 - **Project scope: write `.mcp.json` directly, never the CLI.** The two cases above are both home scope. A project's MCP servers live in the repository's `.mcp.json`, so write that file and still emit `mcp-commands.sh` as an audit record of what went in. Do not run `claude mcp add` for project scope — its scope flags govern the user's own configuration, not the repository's.
 - In all cases, always generate `mcp-commands.sh` as an audit record. **This rule applies only when Claude is the target** — other targets write MCP into config files rather than through a CLI, so there are no commands to emit and the file is not created.
 - `mcp-commands.sh` format: `#!/usr/bin/env bash` on the first line, one command per server, and a comment for anything that needs checking before execution (secret re-entry, possible name collision). It does not need the executable bit — the user reviews it and runs it themselves.
+- **With no MCP servers to migrate, still write the file** with a comment saying the source had none. "Always generate it" means the audit record exists either way; a missing file cannot be told apart from a run that forgot to write one.
 
 ## `~/.claude.json` in test mode
 

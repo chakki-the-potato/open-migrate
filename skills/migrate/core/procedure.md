@@ -33,9 +33,11 @@ Everything above describes **home scope** — the tool's own configuration direc
 
 Before trusting that answer, find out **which** repository answered. `git -C <project> rev-parse --show-toplevel` gives the repository root; compare it to the project root.
 
+**Run this check on its own.** It exits non-zero whenever the project is not in a repository — a normal outcome, not an error. Chaining it into a longer `&&` sequence silently aborts everything after it, and the output of a run where the later checks never executed looks identical to a run where they found nothing. The symlink check and the Codex trust check are exactly the kind of thing that disappears this way, so keep each check a separate command.
+
 - **Same path** — the project is its own repository. Report tracking status directly.
 - **Different path** — the project sits inside a larger repository (a monorepo package, or a scratch directory under some other checkout). The answer describes that outer repository, so say which one in the report. "Untracked" then means "the outer repository does not track it", which is a different fact from "there is no repository here".
-- **No repository at all** — the command fails. Report "not a git repository" rather than "untracked"; nothing will ever be shared.
+- **No repository at all** — the command fails. Report "not a git repository" rather than "untracked"; nothing is shared **as things stand**. Say it that way rather than promising it never will be: a directory holding a `.gitignore` but no `.git` is scaffolded for a repository nobody has initialized yet, and one `git init` turns every file you just wrote into an untracked change. Mention the `.gitignore` when you see one.
 
 **The ledger lives in the project.** Write `<project>/.migrate/ledger.json` and `<project>/.migrate/<run-id>/`, exactly as home scope does inside the target root. A project's ledger is independent of the home ledger and of every other project's.
 
@@ -91,6 +93,14 @@ Each exclusion earns its place:
 
 The same reasoning applies to any other path a target reads natively — check the target doc's compatibility notes before copying.
 
+### Copying a skill directory is not always enough
+
+"Copy the whole directory" is the right default, but two things inside a skill can break or mislead when it moves.
+
+**Relative paths that leave the skill.** A `SKILL.md` referring to `../../../deployment.md` resolves against its own location. It survives only if the target path sits at the same depth — `.codex/skills/<name>/` and `.claude/skills/<name>/` happen to match, but a target that nests differently breaks the reference silently. Check any `../` reference against the destination depth and report the ones that would no longer resolve.
+
+**Vendor-specific helper files.** A skill can ship files only its original tool reads (`openai.yaml` alongside a Codex skill, for example). They copy fine and are harmless, but they are inert on the target — neither lossless nor approximated, just carried along dead. Report them as migrated-but-inert instead of forcing them into another category, and do not mistake one for a subagent because it happens to live in a directory named `agents/`.
+
 **`.agents/skills/` belongs to the project, not to any one tool.** It is a shared surface, so migrate it regardless of which tool you were told the source is — the question is only whether the *target* already reads it. Do not skip it because the source tool's inventory does not list the path; no tool's inventory claims it, and treating that as "not my configuration" would strand every skill living there.
 
 **Never delete the source copy after migrating it.** When you copy a skill out of `.agents/skills/` into a target that does not read that path, the original stays where it is — removing it would break the tools that were reading it. That does leave the same skill visible twice to any tool reading both paths, so say so in the report: name the skill, both locations, and which tools see the duplicate. The user decides whether to prune.
@@ -101,6 +111,8 @@ The same reasoning applies to any other path a target reads natively — check t
 7. Permission rules  8. Env injection  9. Approval/sandbox policy  10. Non-migratable items (keybindings, sessions, auth, model, etc.)
 
 If the source tool doc's inventory table lists a surface that is missing from this checklist, do not skip it for being absent here — add it as an item, process it, and note it in the report.
+
+**A path that looks like a config surface is not necessarily one.** Repositories contain application code, and some of it borrows the same vocabulary — a `sandbox/skills/<id>/SKILL.md` that an application ships to its own runtime is not this repository's editor configuration, however much the path resembles a skill directory. Migrate only what the source doc's inventory names, at the location it names. When something outside those locations looks migratable, leave it alone and record what you saw and why you skipped it; the user knows their codebase and you do not.
 
 Conversely, if you find **a setting present in the source files but absent from the source doc's inventory table**, do not stay silent about it either. An undocumented setting means there is no conversion rule, so **do not migrate it** — quote the key name and its current value and record it in the report as "not migrated — no conversion rule in the docs".
 
@@ -131,7 +143,7 @@ Mark any item with a detected secret as `<REDACTED-REENTER>` in the plan table.
 
 Process only approved categories, in this order.
 
-1. Create `.migrate/<run-id>/backup/` and back up every existing file you are about to modify.
+1. Create `.migrate/<run-id>/backup/` and back up every existing file you are about to modify. Create the directory even when nothing needs backing up — an empty backup directory records that the run modified no pre-existing file, which is itself worth knowing. Say why it is empty in the report.
 2. Check the ledger: if `<target root>/.migrate/ledger.json` already records the sha256 of a source file, skip that item and record it in the report as "already migrated" (this is what makes re-runs safe).
 3. Convert and merge per category, following the target doc's write rules.
 4. Update the ledger: record every source file you actually read this run as `{ "<source file path>": { "sha256": "...", "run": "<run-id>" } }`. Every file you read belongs here regardless of whether it was classified automatic, approximate, or impossible — the next run needs it for change detection. Files forbidden by security.md are never read, not even to compute a hash, so they are not in the ledger. **Files the source tool doc declares out of scope**, whose contents you therefore never opened (Cursor's `skills-cursor/`, Grok's `GROK.md`), stay out for the same reason — the ledger records what you read and migrated, not everything you laid eyes on. Those files get excluded again by the same rule on the next run, so change detection is unnecessary. The key is the source root resolved to an absolute path joined with the file's relative path — one entry per file, in test mode too. Re-migrating the same file overwrites its entry with the latest run info; no history is kept.
@@ -147,6 +159,8 @@ Every target doc instructs you to write a `## Migrated from <source> (<date>)` s
 - Give every source rule file its own **`### <filename>` subheading. Add it even when there is only one file** — a format that changes with the file count makes rules untraceable and produces different output run to run.
 - Order files the way the source tool actually loads them (alphabetical by filename when the source doc does not say).
 - If the source body contains higher-level headings (`# ...`), **leave the body verbatim and do not adjust heading levels.** Inverted heading levels are acceptable; preserving the original takes priority.
+
+**When the target rules file does not exist, create it** containing only the migrated section. Every target doc says to "append to the end of the file", which reads as though a file is always there — in project scope the opposite is normal, since the target tool may never have been used in that repository. Create any missing parent directory too. There is nothing to back up in this case; say so rather than leaving the backup step unexplained.
 
 **Check that the target file is not the source file before writing.** People symlink one rules file to another so several tools share it — `CLAUDE.md -> AGENTS.md` in the same directory is a common arrangement, and project scope makes it likely because source and target live in one root. Appending to a symlink writes through to its destination, so a migration that does not check would copy the source into itself and keep growing on every run.
 
