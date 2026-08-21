@@ -29,14 +29,21 @@
 
 - 실제 환경(타겟 = 실제 `~/.claude`): `claude mcp add` 를 직접 실행하고 `claude mcp list` 로 확인.
 - 테스트 모드(타겟 루트가 실제 홈이 아님): 실행하지 않고 명령 목록을 `.migrate/<run-id>/mcp-commands.sh` 로만 산출.
-- 두 경우 모두 감사 기록용으로 `mcp-commands.sh` 는 항상 생성한다.
+- 두 경우 모두 감사 기록용으로 `mcp-commands.sh` 는 항상 생성한다. **이 규칙은 Claude 가 타겟일 때만 적용된다** — 다른 타겟은 MCP 를 CLI 가 아니라 설정 파일에 직접 쓰므로 산출할 명령이 없고, 그때는 이 파일을 만들지 않는다.
+- `mcp-commands.sh` 내용 규격: 첫 줄 `#!/usr/bin/env bash`, 서버당 명령 한 줄, 실행 전 확인이 필요한 항목(시크릿 재입력·동명 서버 가능성)은 주석으로 남긴다. 실행 권한은 붙이지 않아도 된다 — 사용자가 내용을 검토한 뒤 직접 실행하는 파일이다.
+
+## 테스트 모드에서의 경로 해석 (Claude 가 소스든 타겟이든)
+
+`~/.claude.json` 은 `~/.claude` 디렉토리 **바깥**에 있다. 타겟 루트(또는 소스 루트)가 실제 홈이 아닐 때 이 파일의 대응 위치는 **`<루트>/.claude.json`** 이다 — 루트를 `~/.claude` 자리에 그대로 대입하고, 형제 파일은 루트 **안쪽**으로 접는다.
+
+**실제 `~/.claude.json` 을 읽지 않는다.** 테스트 실행이 사용자의 진짜 설정을 끌어들이면 결과가 오염되고, security.md 가 그 파일의 나머지 키를 읽지 말라고 한 것과도 어긋난다. 루트 안에 대응 파일이 없으면 "해당 스코프 없음" 으로 0건 처리하고 리포트에 적는다.
 
 ## 읽기 인벤토리 (Claude가 소스일 때)
 
 | 카테고리 | 위치 | 비고 |
 |---|---|---|
 | 전역 규칙 | `~/.claude/CLAUDE.md` | `@경로` import 줄은 **원문 그대로 옮기고 내용을 펼치지 않는다** — 대상 파일을 열어 병합하지 마라 |
-| MCP | `~/.claude.json` 최상위 `mcpServers` (user scope), `projects["<path>"].mcpServers` (local scope), 프로젝트 `.mcp.json`, `~/.claude/mcp.json` (비표준이지만 실사용 사례 있음 — 충돌 검사에 포함) | |
+| MCP | `~/.claude.json` 최상위 `mcpServers` (user scope), `projects["<path>"].mcpServers` (local scope), 프로젝트 `.mcp.json`, `~/.claude/mcp.json` (비표준이지만 실사용 사례 있음) | **네 곳 모두 이관 소스다** — "충돌 검사용" 이 아니라 여기서 발견한 서버를 타겟으로 옮긴다. 서버 정의 필드: stdio 는 `command`/`args`/`env`, remote 는 `url`/`headers` + 선택 `type`(`http`\|`sse`). 타겟으로 넘길 때 `type` 은 타겟이 전송 방식을 구분하는 경우에만 쓰고, 구분 개념이 없는 타겟(TOML 계열은 `url` 유무로 판별)에서는 드롭한다. `headers` 는 타겟의 헤더 필드명으로 옮긴다(Codex·Grok 은 `http_headers`). 같은 서버가 여러 곳에 있으면 한 번만 옮기고 중복 출처를 리포트에 적는다 |
 | 스킬 | `~/.claude/skills/<name>/SKILL.md` | 지원 파일 포함 디렉토리 전체 |
 | 커맨드 | `~/.claude/commands/<name>.md` | 평문 markdown. `$1`-`$9`/`$ARGUMENTS` 치환 토큰 원문 유지 |
 | 서브에이전트 | `~/.claude/agents/*.md` | frontmatter `name`·`description`(필수) + `tools`·`model`(선택) + 본문(시스템 프롬프트). `tools`·`model`·`color` 는 타겟에 대응 필드가 없으면 드롭 후 리포트 |
