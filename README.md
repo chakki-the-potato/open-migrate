@@ -97,6 +97,8 @@ Natural language works as well: say "migrate my codex settings over" and it pick
 
 A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
+Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `.mcp.json`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
+
 ### Project configuration
 
 Repositories carry their own configuration — `CLAUDE.md`, `.claude/`, `.codex/`, `.cursor/rules/`, and so on. Name a project and it migrates that too.
@@ -111,7 +113,19 @@ Project scope differs from home scope in three ways worth knowing.
 - **The diff is usually tracked by git.** The report tells you which files git tracks — and, in a monorepo, which repository answered — so you can see what a push would share with your team. The migration never stages or commits anything.
 - **Each project keeps its own ledger** at `<repo>/.migrate/ledger.json`, so re-running is safe per project.
 
-Projects are never discovered automatically — only the one you name is touched.
+Or ask for all of them:
+
+```
+migrate my codex settings, including every project on this machine
+```
+
+Discovery scans the home directory to depth 5 and excludes what is not a project: every dotdirectory directly under the home (that is where plugin caches and tool state live), `node_modules`, `Library`, `.Trash`, and repository internals. On the machine this was measured against, that turns 38 raw matches into 17 real projects.
+
+**Being a git repository is not the test** — 13 of the 25 git repositories found were plugin marketplace clones, which are themselves repos. Git status is reported, never used to decide.
+
+You see the full list before anything is written, and approve the set at once. Nested projects count separately: a package inside a monorepo that carries its own config gets its own migration and its own ledger.
+
+Nothing is discovered unless you ask for it. Name one project and only that one is touched.
 
 Two surfaces need extra care and the report calls both out.
 

@@ -29,7 +29,8 @@ Consider it installed when `~/.claude/settings.json` or `~/.claude/CLAUDE.md` ex
 
 - Real environment (target is the actual `~/.claude`): run `claude mcp add` directly and verify with `claude mcp list`.
 - Test mode (target root is not the real home): do not execute; emit the command list to `.migrate/<run-id>/mcp-commands.sh` instead.
-- In both cases, always generate `mcp-commands.sh` as an audit record. **This rule applies only when Claude is the target** — other targets write MCP into config files rather than through a CLI, so there are no commands to emit and the file is not created.
+- **Project scope: write `.mcp.json` directly, never the CLI.** The two cases above are both home scope. A project's MCP servers live in the repository's `.mcp.json`, so write that file and still emit `mcp-commands.sh` as an audit record of what went in. Do not run `claude mcp add` for project scope — its scope flags govern the user's own configuration, not the repository's.
+- In all cases, always generate `mcp-commands.sh` as an audit record. **This rule applies only when Claude is the target** — other targets write MCP into config files rather than through a CLI, so there are no commands to emit and the file is not created.
 - `mcp-commands.sh` format: `#!/usr/bin/env bash` on the first line, one command per server, and a comment for anything that needs checking before execution (secret re-entry, possible name collision). It does not need the executable bit — the user reviews it and runs it themselves.
 
 ## `~/.claude.json` in test mode
@@ -61,7 +62,7 @@ Read these when Claude is the source in a project migration; write these when it
 | Global rules | `CLAUDE.md`, or `.claude/CLAUDE.md` | If both exist, migrate both and keep them separated per file (procedure.md's merge format) |
 | MCP | `.mcp.json` | Same server definition fields as the home-scope `mcpServers` object. **Write the file directly — do not use `claude mcp add` here.** The CLI rule in the write-rules table above governs home scope; this row is the more specific rule and wins for project scope (procedure.md precedence 3). Still emit `.migrate/<run-id>/mcp-commands.sh` as an audit record of what was written |
 | Settings | `.claude/settings.json` (shared), `.claude/settings.local.json` (personal) | Same schema as home `settings.json`: `hooks`, `permissions`, `env`. Merge each into the matching file — never move a setting between shared and local, since that changes who sees it |
-| Skills | `.claude/skills/<name>/` | Whole directory, supporting files included |
+| Skills | `.claude/skills/<name>/` | Whole directory, supporting files included. **A same-name skill is skipped, but say whether the contents differ** — two skills sharing a name while holding different files is the fact the user needs, and reporting a bare "skipped" hides it. Compare the directories and, when they diverge, name what each side has |
 | Subagents | `.claude/agents/*.md` | Same frontmatter rules as home scope |
 | Commands | `.claude/commands/*.md` | Same substitution rules as home scope |
 

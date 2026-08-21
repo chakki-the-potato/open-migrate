@@ -45,7 +45,42 @@ Everything else is unchanged: the same five steps, the same category checklist, 
 
 - If the user names a project root, migrate project scope for that root.
 - If the user names both a home target root and a project root, migrate both and report them as separate sections.
-- If the user names neither, migrate home scope only. **Never scan for projects on your own** — scanning is out of scope for this version and picking projects unasked would edit repositories the user did not name.
+- If the user asks for **every project on the machine**, run the discovery below, present the list in the plan, and migrate the approved ones.
+- If the user names neither a project root nor "all projects", migrate home scope only. **Never scan unasked** — picking projects on your own would edit repositories the user never mentioned.
+
+### Discovering every project
+
+Run exactly this. Do not improvise a variant; the exclusions are what keep the tools' own caches out.
+
+```bash
+find "$HOME" -maxdepth 5 \
+  \( -path "$HOME/.*" -o -name node_modules -o -name Library -o -name .Trash -o -name .git \) -prune -o \
+  \( -type d \( -name '.claude' -o -name '.codex' -o -name '.cursor' -o -name '.grok' -o -name '.agents' \) -print \) -o \
+  \( -type f \( -name 'AGENTS.md' -o -name 'CLAUDE.md' \) -print \) 2>/dev/null \
+  | sed -e 's|/\.[a-z-]*$||' -e 's|/[A-Z]*\.md$||' | sort -u
+```
+
+The second clause matters: a project whose only configuration is a root `AGENTS.md` or `CLAUDE.md` has no config *directory* to match on, and searching for directories alone silently skips it. Rules files are the first row of every tool's project inventory, so a scan that cannot see them misses real projects.
+
+Each exclusion earns its place:
+
+- **`$HOME/.*`** — every dotdirectory directly under the home is application data, not a project. This is the rule that removes plugin caches, marketplace clones, and tool state. Without it a real machine returns roughly twice as many hits, most of them the tools' own directories.
+- **`node_modules`, `Library`, `.Trash`** — dependency trees and system locations.
+- **`.git`** — a repository's internals can contain anything; never treat them as config.
+
+**Do not use "is a git repository" as the test.** On the machine this rule was measured against, 25 git repositories matched and 13 of them were plugin marketplace clones — marketplaces are themselves git repos. Report git status, never decide with it.
+
+**Depth is capped at 5.** That covers every real project on a normal layout and keeps the scan under a tenth of a second. Say so in the report, so a user with deeper nesting knows why something is missing and can pass that project root explicitly.
+
+**Discard results that are not projects.** The exclusions above remove tool data, but a match can still land somewhere that is obviously not a repository — a `~/Documents/.claude/settings.local.json` makes the whole Documents folder look like a project. Drop a hit when it is a standard home folder (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Movies`, `Public`) rather than something inside one. Name every discarded hit in the report so the decision is visible; if the user actually keeps a project at that path, they can pass it explicitly.
+
+**Skip projects with nothing to migrate.** A discovered project whose source-tool surfaces are all empty gets no `.migrate/` directory and no ledger — creating them would leave an untracked directory in a repository for no reason. Count it in the scan summary as found-but-empty and move on.
+
+**Rules for the results:**
+
+- **Nested hits are separate projects.** `a/b` appearing under `a` means both carry config; the tools resolve them as distinct scopes. Give each its own ledger and never merge a child's config into its parent.
+- **Present the full list before writing anything.** The plan names every project found; Confirm approves the set at once. A run that silently edits seventeen repositories is not acceptable no matter how correct each edit is.
+- **One project's failure does not stop the rest.** Record it, continue, and list the failure in the report. Per-project ledgers make a re-run skip whatever already succeeded.
 
 ### `.agents/` is shared, not migratable
 
@@ -55,6 +90,8 @@ Everything else is unchanged: the same five steps, the same category checklist, 
 - When the target does not read it (Claude Code, Codex CLI), migrate it like any other skill directory.
 
 The same reasoning applies to any other path a target reads natively — check the target doc's compatibility notes before copying.
+
+**`.agents/skills/` belongs to the project, not to any one tool.** It is a shared surface, so migrate it regardless of which tool you were told the source is — the question is only whether the *target* already reads it. Do not skip it because the source tool's inventory does not list the path; no tool's inventory claims it, and treating that as "not my configuration" would strand every skill living there.
 
 **Never delete the source copy after migrating it.** When you copy a skill out of `.agents/skills/` into a target that does not read that path, the original stays where it is — removing it would break the tools that were reading it. That does leave the same skill visible twice to any tool reading both paths, so say so in the report: name the skill, both locations, and which tools see the duplicate. The user decides whether to prune.
 
@@ -111,6 +148,14 @@ Every target doc instructs you to write a `## Migrated from <source> (<date>)` s
 - Order files the way the source tool actually loads them (alphabetical by filename when the source doc does not say).
 - If the source body contains higher-level headings (`# ...`), **leave the body verbatim and do not adjust heading levels.** Inverted heading levels are acceptable; preserving the original takes priority.
 
+**Check that the target file is not the source file before writing.** People symlink one rules file to another so several tools share it — `CLAUDE.md -> AGENTS.md` in the same directory is a common arrangement, and project scope makes it likely because source and target live in one root. Appending to a symlink writes through to its destination, so a migration that does not check would copy the source into itself and keep growing on every run.
+
+Before merging, resolve both paths (`readlink -f`, or compare inode and size) and compare:
+
+- **Same file** — write nothing. Report it as already shared: one file already serves both tools, which is the outcome the migration was trying to produce.
+- **Target is a symlink somewhere else** — say where in the report before writing, because the edit lands outside the path you were given.
+- **Different files** — merge normally.
+
 ## Step 5: Report
 
 Write `.migrate/<run-id>/migration-report.md` and print the same content to the user as a summary. Format:
@@ -142,6 +187,22 @@ Every entry must include the source file path (for example `keybindings.json`, o
 ## Verification
 - <the checks you ran and their results>
 ```
+
+### Reporting a multi-project run
+
+When several projects were migrated, keep the structure above but repeat it per project under a `## Project: <path>` heading, and open the report with a roll-up:
+
+```markdown
+## Projects
+| Project | Found | Migrated | Skipped | Failed | Git tracked files touched |
+|---|---|---|---|---|---|
+| ~/code/app-one | 6 | 5 | 1 | 0 | 2 |
+| ~/code/app-two | 3 | 3 | 0 | 0 | 0 |
+
+Scanned to depth 5 from the home directory; <N> projects found, <M> approved.
+```
+
+The roll-up is what makes a seventeen-project run reviewable. Put the per-project detail below it, in the order the projects were processed, and write each project's own report into that project's `.migrate/<run-id>/` as well — a repository should carry the record of what was done to it.
 
 Never write a secret's literal value in the report (security.md).
 
