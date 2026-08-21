@@ -20,12 +20,30 @@ adapters/*/SKILL.md per-tool entry points (thin shells that differ only in desti
 
 ### Claude Code and Codex CLI — plugin
 
+Both tools install the same package without conversion, but their commands differ.
+
+**Claude Code** — inside a session:
+
 ```
 /plugin marketplace add chakki-the-potato/open-migrate
 /plugin install migrate@migrate-marketplace
 ```
 
-Both tools install the same package without conversion. The plugin distribution determines which tool it is running in and uses that as the destination.
+or from the shell:
+
+```
+claude plugin marketplace add chakki-the-potato/open-migrate
+claude plugin install migrate@migrate-marketplace
+```
+
+**Codex CLI** — from the shell. It needs the full URL, and the `@marketplace` qualifier is required on install:
+
+```
+codex plugin marketplace add https://github.com/chakki-the-potato/open-migrate
+codex plugin add migrate@migrate-marketplace
+```
+
+The plugin distribution determines which tool it is running in and uses that as the destination.
 
 ### Cursor and Grok Build — install script
 
@@ -36,7 +54,20 @@ cd open-migrate
 ./install.sh grok      # → ~/.grok/skills/migrate  (honors GROK_HOME)
 ```
 
-`./install.sh claude` and `./install.sh codex` exist too, for installing as a personal skill instead of a plugin.
+`./install.sh claude` and `./install.sh codex` exist too, for installing as a personal skill instead of a plugin. Pick one method per tool — installing both leaves two skills named `migrate` in the same home.
+
+If Grok Build is not installed yet: `curl -fsSL https://x.ai/cli/install.sh | bash`.
+
+### Install status verified
+
+Installation and skill loading were checked on a real machine, not just in tests.
+
+| Tool | Install | Skill loads |
+|---|---|---|
+| Claude Code | plugin | verified — the running session lists `migrate` |
+| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`; the skill loader logs it), full round trip unverified |
+| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `migrate` |
+| Grok Build | `./install.sh grok` | unverified — no Grok Build on the development machine |
 
 ## Usage
 
