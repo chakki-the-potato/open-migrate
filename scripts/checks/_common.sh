@@ -54,7 +54,12 @@ find_run_artifact() {
 }
 
 # Global rules — override precedence (the decoy must not leak through)
-chk_not "AGENTS.override precedence"   grep -rqF "OVERRIDDEN-DECOY" "$TARGET"
+#
+# Excludes .migrate/ because the report legitimately names the decoy: a run that
+# verifies "the decoy did not leak" documents the check it ran, and the marker
+# appears inside that sentence. Migrating the decoy into a config file is the
+# failure; writing down that you looked for it is the opposite of one.
+chk_not "AGENTS.override precedence"   grep -rqF --exclude-dir=.migrate "OVERRIDDEN-DECOY" "$TARGET"
 
 # The report artifact exists (its contents are verified by the per-target checks)
 chk "report exists"                    test -f "${mig_dir}migration-report.md"

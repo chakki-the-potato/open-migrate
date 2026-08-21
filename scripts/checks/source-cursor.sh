@@ -13,7 +13,13 @@ chk "report: approval policy suggested"   grep -qE "approvalMode|approval_policy
 # both that fact and that it cannot be migrated automatically.
 # The Korean alternatives are kept for reports generated before the docs switched to English.
 chk "report: User Rules noted as account-stored" grep -qF "User Rules" "${mig_dir}migration-report.md"
-chk "report: User Rules manual action"    grep -qE "User Rules.*(수동|manual|직접)" "${mig_dir}migration-report.md"
+# Checks placement, not vocabulary. Requiring the word "manual" on the same line
+# fails a report that instead spells out the steps ("open Cursor's settings, copy
+# your User Rules, paste them into ..."), which is strictly better writing and
+# which the docs never forbade. What must hold is that User Rules is presented as
+# something the user has to do, i.e. it sits under the manual-action heading.
+chk "report: User Rules under manual action" \
+  awk '/^## /{s=tolower($0)} /[Uu]ser [Rr]ules/{if (s ~ /manual|수동/) {found=1}} END{exit !found}' "${mig_dir}migration-report.md"
 
 # Cursor permissions have only allow/deny, so there is no ask tier at all (core/tools/
 # cursor.md, permission rules inventory). The report must cover both directions: (1) another
