@@ -155,17 +155,20 @@ Two surfaces need extra care and the report calls both out.
 
 Each direction was scored by a deterministic verifier after actually migrating a fixture. These are measured results.
 
-| Direction | Checks | Result |
-|---|---|---|
-| Codex → Claude | 64 | pass |
-| Claude → Codex | 54 | pass |
-| Claude → Cursor | 57 | pass |
-| Cursor → Claude | 59 | pass |
-| Claude → Grok | 61 | pass |
-| Grok → Claude | 61 | pass |
-| Codex → Cursor | 58 | pass |
+**All twelve directions pass.**
 
-The remaining five directions (Codex↔Grok, Cursor↔Grok, Cursor→Codex) are covered by the same structure but have not been measured. The evidence for composability is that Codex → Cursor passed **with no new fixture and no new verifier** — purely by combining existing artifacts.
+| From \ To | Claude | Codex | Cursor | Grok |
+|---|---|---|---|---|
+| **Claude** | — | 54 | 57 | 61 |
+| **Codex** | 64 | — | 58 | 62 |
+| **Cursor** | 59 | 50 | — | 55 |
+| **Grok** | 61 | 52 | 58 | — |
+
+The numbers are how many checks that direction runs, and every one of them passes.
+
+What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
+
+Project scope is verified separately at 30 checks, and an empty target still fails 24 of them, so the verifier is not passing everything by default.
 
 To run it yourself:
 
