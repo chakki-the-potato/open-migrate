@@ -14,6 +14,7 @@ You are running inside the destination tool (Codex CLI). Migrate another tool's 
 - If that source has no doc under `core/tools/`, say support is planned and stop.
 - Source root = the default home from the source tool's doc. If the user gives an explicit source root path, use that instead.
 - Target root = the real Codex CLI environment (`$CODEX_HOME`, defaulting to `~/.codex`, per `core/tools/codex.md`). If the user gives an explicit target root, use it and switch to **test mode** (see procedure.md, "Path resolution in test mode").
+- Project root = a repository whose per-project configuration should also be migrated. Use it only when the user names one. With a project root, migrate project scope per procedure.md's "Project scope" section; without one, migrate home scope only and never go looking for projects.
 - Auto-detect only when neither the source nor a source root was given. Check whether `~/.claude`, `~/.cursor`, and `~/.grok` exist, present the tools you found, and let the user choose (excluding the destination itself). If you cannot ask the user, stop rather than guess.
 
 ## 1. Load knowledge (relative to the skill directory, all required)

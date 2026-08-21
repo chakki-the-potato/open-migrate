@@ -19,6 +19,33 @@ If the target (or source) root is not that tool's real home, you are in test mod
 
 Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report, MCP commands) go in `<target root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<target root>/.migrate/ledger.json`.
 
+## Project scope
+
+Everything above describes **home scope** — the tool's own configuration directory. Tools also read **project scope** configuration from the repository you are working in. Migrating project scope has three differences you must respect.
+
+**Source and target share one root.** In home scope the source (`~/.codex`) and the target (`~/.claude`) are two separate trees. In a project they are the same directory: `<project>/.codex/` is the source and `<project>/.claude/` is the target. You are given one project root, not a source root and a target root.
+
+**Project config is usually tracked by git.** Migrating produces a diff in someone's repository and, once pushed, reaches teammates. For every file you write or modify, check whether git tracks it (`git -C <project> ls-files --error-unmatch <path>` succeeds) and record the answer in the report. Never run any other git command — do not stage, commit, or stash. The user decides what to do with the diff.
+
+**The ledger lives in the project.** Write `<project>/.migrate/ledger.json` and `<project>/.migrate/<run-id>/`, exactly as home scope does inside the target root. A project's ledger is independent of the home ledger and of every other project's.
+
+Everything else is unchanged: the same five steps, the same category checklist, the same conflict rules, the same security policy.
+
+### Scope selection
+
+- If the user names a project root, migrate project scope for that root.
+- If the user names both a home target root and a project root, migrate both and report them as separate sections.
+- If the user names neither, migrate home scope only. **Never scan for projects on your own** — scanning is out of scope for this version and picking projects unasked would edit repositories the user did not name.
+
+### `.agents/` is shared, not migratable
+
+`<project>/.agents/skills/` is a vendor-neutral path that Cursor and Grok read natively. A skill living there is **already visible** to those tools, so copying it into `.cursor/skills/` or `.grok/skills/` creates a duplicate rather than migrating anything.
+
+- When the target reads `.agents/skills/` natively, record each skill found there as "already being read" and migrate nothing.
+- When the target does not read it (Claude Code, Codex CLI), migrate it like any other skill directory.
+
+The same reasoning applies to any other path a target reads natively — check the target doc's compatibility notes before copying.
+
 ## Category checklist (walk all of it, every run)
 
 1. Global rules  2. MCP servers  3. Skills  4. Commands/prompts  5. Subagents  6. Hooks
