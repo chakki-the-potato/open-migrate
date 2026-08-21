@@ -99,6 +99,9 @@ Only `UserPromptSubmit` → `beforeSubmitPrompt` is more than a case change — 
 ```
 
 - Hook object fields: `command` (required), `type` (`"command"` or `"prompt"`), `timeout` (seconds), `matcher` (tool-name regex), `failClosed`, `loop_limit`.
+- **Decomposing a Cursor matcher** works the same way in reverse. A Cursor `matcher` is a tool-name regex too, so it can hold an alternation (`Shell|Read`). Split on `|`, map each token with the Cursor → target row above, and join the results back with `|`. Tokens that the mapping drops disappear from the alternation; if that empties it, drop the hook and record it. Note that `Write` expands rather than maps — `Shell|Write` becomes `Bash|Edit|Write` for Claude — so de-duplicate after expanding.
+- **Migrating out of Cursor, only `type: "command"` hooks are portable.** A `"prompt"` hook has no equivalent in any other tool — drop the whole hook and record it in the report with its matcher and text, so the user can decide whether to rebuild it. Never convert one into a command hook; the two do different things.
+- **`failClosed` and `loop_limit` have no equivalent either.** They are Cursor-specific execution controls, not part of the hook's behavior on another tool. Migrate the hook without them and name the dropped fields in the report — `failClosed` in particular changes what happens when the hook fails, so its loss is worth stating rather than burying.
 - One Claude `{matcher, hooks:[{command, timeout}]}` expands into **several** Cursor hook objects — copy the outer `matcher` into each element of the inner `hooks` array.
 - **Decomposing compound matchers**: a Claude matcher can hold a regex alternation such as `Edit|Write`. Split on `|`, apply the tool-name mapping to each token, then de-duplicate (`Edit|Write` → both become `Write` → a single `Write`). If a matcher consists only of tokens that the mapping drops (`Glob`, `WebFetch`, `WebSearch`), drop the entire hook and record it in the report.
 
