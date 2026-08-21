@@ -41,8 +41,10 @@ chk "config.toml parses as TOML"       python3 "$script_dir/toml-to-json.py" "$T
 chk "existing model preserved"         jq -e '.model == "gpt-5.6-sol"' "$codex_toml_json"
 chk "existing env key preserved"       jq -e '.shell_environment_policy.set.EXISTING_KEY == "keep"' "$codex_toml_json"
 
-# config.toml — env 주입 ([shell_environment_policy.set] <- Claude env 블록)
+# config.toml — env 주입 ([shell_environment_policy.set] <- 소스의 전역 env 블록)
+if [ "$src_has_global_env" = 1 ]; then
 chk "env injected"                     jq -e '.shell_environment_policy.set.FIXTURE_FLAG == "1"' "$codex_toml_json"
+fi
 
 # config.toml — MCP stdio
 chk "mcp everything command"           jq -e '.mcp_servers.everything.command == "npx"' "$codex_toml_json"
@@ -68,8 +70,10 @@ chk_not "ConfigChange dropped from hooks.json" grep -qF "ConfigChange" "$TARGET/
 
 # 권한 -> rules/*.rules (prefix_rule DSL, decision 매핑: allow/prompt/forbidden)
 chk "rules: git status allow"    grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"git"[[:space:]]*,[[:space:]]*"status"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
+if [ "$src_has_ask_tier" = 1 ]; then
 chk "rules: git push prompt"     grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"git"[[:space:]]*,[[:space:]]*"push"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"prompt"[[:space:]]*\)' "$codex_rules_all"
 chk "rules: rm forbidden"        grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"rm"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"forbidden"[[:space:]]*\)' "$codex_rules_all"
+fi
 chk "rules: npm run build allow" grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"npm"[[:space:]]*,[[:space:]]*"run"[[:space:]]*,[[:space:]]*"build"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
 chk "rules: npm run test allow"  grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"npm"[[:space:]]*,[[:space:]]*"run"[[:space:]]*,[[:space:]]*"test"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
 
@@ -95,9 +99,11 @@ chk "agent developer_instructions carried" jq -e '(.developer_instructions // ""
 # "읽기 인벤토리"/"변환 규칙 (Codex -> 다른 도구)" 절이 prompts/*.md 를 Codex의 커맨드
 # 표면으로, TOML<->md 서브에이전트 변환을 대칭 규칙으로 명시하므로 그 형식을 그대로
 # 역방향 적용한다고 가정하고 체크를 작성한다. 문서 자체는 건드리지 않는다 — REPORT 참고.
+if [ "$src_has_commands" = 1 ]; then
 chk "prompt converted from command"    test -f "$TARGET/prompts/greet.md"
 chk "prompt keeps ARGUMENTS token"     grep -qF '$ARGUMENTS' "$TARGET/prompts/greet.md"
 chk "prompt body carried over"         grep -qF "warmly and mention today" "$TARGET/prompts/greet.md"
+fi
 
 # 백업 (존재 + 원본 내용) — security.md "쓰기 안전 규칙"(모든 타겟 공통) 적용, 파일명은 Codex 전용
 codex_backup_agents="$(find_run_artifact backup/AGENTS.md)"
