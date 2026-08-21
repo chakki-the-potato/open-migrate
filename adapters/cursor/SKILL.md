@@ -22,6 +22,7 @@ description: Migrate settings from another AI coding tool (Claude Code, Codex CL
 2. `core/procedure.md` — 실행 절차
 3. `core/tools/<source>.md` — 소스 읽기·변환 규칙
 4. `core/tools/cursor.md` — 타겟 쓰기 규칙
+5. 위 문서가 다른 도구 문서로 규칙을 위임하면(예: "codex.md 의 MCP 변환 규칙을 그대로 적용한다") **그 문서도 읽는다.** 위임을 따라가지 않으면 규칙의 절반만 아는 상태가 된다.
 
 ## 2. 실행
 
