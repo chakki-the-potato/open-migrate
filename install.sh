@@ -6,7 +6,8 @@ case "$dest" in
   claude) target="$HOME/.claude/skills/migrate" ;;
   codex)  target="${CODEX_HOME:-$HOME/.codex}/skills/migrate" ;;
   cursor) target="$HOME/.cursor/skills/migrate" ;;
-  *) echo "unsupported destination: $dest (supported: claude, codex, cursor)" >&2; exit 1 ;;
+  grok)   target="${GROK_HOME:-$HOME/.grok}/skills/migrate" ;;
+  *) echo "unsupported destination: $dest (supported: claude, codex, cursor, grok)" >&2; exit 1 ;;
 esac
 
 src_dir="$(cd "$(dirname "$0")" && pwd)"
