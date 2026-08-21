@@ -105,6 +105,7 @@ Read these when Codex is the source in a project migration; write these when it 
 | Subagents | **No project surface** | Codex reads subagents only from `$CODEX_HOME/agents/`. A source's project-level subagents cannot be migrated to Codex project scope — record them under manual action with their source location |
 | Commands / prompts | **No project surface** | Same as subagents: `prompts/` is home-scope only |
 | Env injection | **No project surface** | `[shell_environment_policy]` loads from the home `config.toml` only |
+| Vendor-neutral skills | `.agents/skills/<name>/` | **Not listed in any tool's own inventory** — it is a shared project surface. procedure.md's "`.agents/` is shared, not migratable" rule governs it: migrate it when this target does not read the path natively, leave it alone when it does. Never skip it just because it is absent from the table above |
 
 Categories with "No project surface" are not oversights — record each as impossible in the report rather than inventing a path. Writing `.codex/agents/` or `.codex/prompts/` produces files Codex never reads.
 

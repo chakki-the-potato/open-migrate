@@ -1,7 +1,7 @@
 {
   "name": "migrate",
   "description": "Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build) — rules, MCP servers, skills, subagents, hooks, and permissions",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "chakki-the-potato"
   },

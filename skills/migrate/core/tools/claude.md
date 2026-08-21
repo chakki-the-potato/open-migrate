@@ -60,11 +60,12 @@ Read these when Claude is the source in a project migration; write these when it
 
 | Category | Location | Notes |
 |---|---|---|
-| Global rules | `CLAUDE.md`, or `.claude/CLAUDE.md` | If both exist, migrate both and keep them separated per file (procedure.md's merge format) |
+| Global rules | `CLAUDE.md`, or `.claude/CLAUDE.md` | Reading: if both exist, migrate both and keep them separated per file (procedure.md's merge format). **Writing: prefer the root `CLAUDE.md`.** It is the location Claude Code documents first, and repositories frequently gitignore the whole `.claude/` directory — writing rules there would hide them from the team that the rules are for. Choose `.claude/CLAUDE.md` only when that file already exists and the root one does not; say which you picked and why in the report |
 | MCP | `.mcp.json` | Same server definition fields as the home-scope `mcpServers` object. **Write the file directly — do not use `claude mcp add` here.** The CLI rule in the write-rules table above governs home scope; this row is the more specific rule and wins for project scope (procedure.md precedence 3). Still emit `.migrate/<run-id>/mcp-commands.sh` as an audit record of what was written |
 | Settings | `.claude/settings.json` (shared), `.claude/settings.local.json` (personal) | Same schema as home `settings.json`: `hooks`, `permissions`, `env`. Merge each into the matching file — never move a setting between shared and local, since that changes who sees it |
 | Skills | `.claude/skills/<name>/` | Whole directory, supporting files included. **A same-name skill is skipped, but say whether the contents differ** — two skills sharing a name while holding different files is the fact the user needs, and reporting a bare "skipped" hides it. Compare the directories and, when they diverge, name what each side has |
 | Subagents | `.claude/agents/*.md` | Same frontmatter rules as home scope |
 | Commands | `.claude/commands/*.md` | Same substitution rules as home scope |
+| Vendor-neutral skills | `.agents/skills/<name>/` | **Not listed in any tool's own inventory** — it is a shared project surface. procedure.md's "`.agents/` is shared, not migratable" rule governs it: migrate it when this target does not read the path natively, leave it alone when it does. Never skip it just because it is absent from the table above |
 
 `.claude/settings.local.json` is personal configuration that repositories usually gitignore — but not always. Report its git status like any other file rather than assuming.

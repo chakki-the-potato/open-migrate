@@ -159,5 +159,6 @@ Read these when Cursor is the source in a project migration; write these when it
 | Skills | `.cursor/skills/<name>/` | Whole directory |
 | Subagents | `.cursor/agents/*.md` | Project agents take precedence over the user's `~/.cursor/agents/` |
 | Commands | `.cursor/commands/*.md` | Deprecated surface; migrate per the write rules above |
+| Vendor-neutral skills | `.agents/skills/<name>/` | **Not listed in any tool's own inventory** — it is a shared project surface. procedure.md's "`.agents/` is shared, not migratable" rule governs it: migrate it when this target does not read the path natively, leave it alone when it does. Never skip it just because it is absent from the table above |
 
 Cursor has no project-scope MCP, permission, or hook file — those live only in the home. When Cursor is the target of a project migration, the source's project-level MCP, permissions, and hooks are not migratable at project scope. Record them in the manual-action list with their source location instead of silently dropping them.
