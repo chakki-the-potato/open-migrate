@@ -145,6 +145,10 @@ Mark any item with a detected secret as `<REDACTED-REENTER>` in the plan table.
 - Items that conflict with something already in the target (same-name skill, env key with a different value) are confirmed individually here.
 - **Write nothing before approval.** If the user stops, end the run leaving only the plan table.
 
+**When there is nobody to ask** — a scripted run, CI, a non-interactive session — approval cannot be inferred from silence. Produce the plan table, write nothing, and stop, saying that the run needs approval to continue. The one exception is an explicit standing approval in the request itself ("treat Confirm as approved", "run to completion without asking"); that is the user approving in advance, and it is the only thing that substitutes for the step.
+
+Never treat "the user is not here to object" as consent. An unattended run that writes is the one shape of this tool that cannot be undone by declining.
+
 ## Step 4: Apply
 
 Process only approved categories, in this order.

@@ -16,7 +16,9 @@ Read them from the user's input if present. `/open-migrate codex claude` means *
 
 Ask for whatever is still missing. Do not guess, and do not assume the tool you are running inside is either one.
 
-When asking, list what is actually on the machine — check for `~/.claude`, `~/.codex`, `~/.cursor`, and `~/.grok` and present what exists. Offer tools that are not installed as destinations too, noting that their home will be created; migrating into a tool before installing it is a normal thing to want.
+When asking, list what is actually on the machine — check whether `~/.claude`, `~/.codex`, `~/.cursor`, and `~/.grok` exist and present what you find. Existence only: do not open anything inside them. That keeps this compatible with test mode, where reading a real home is forbidden — knowing a directory is there tells you what to offer without pulling real configuration into the run.
+
+Offer tools that are not installed as destinations too, noting that their home will be created; migrating into a tool before installing it is a normal thing to want.
 
 Valid values: `claude`, `codex`, `cursor`, `grok`. Source and destination must differ. If either has no doc under `core/tools/`, say support is planned and stop.
 
@@ -31,8 +33,10 @@ Ask what to migrate when the user has not said:
 ### 0-3. Roots
 
 - Source root = the source doc's default home, unless the user names a path.
-- Destination root = the destination doc's default home, unless the user names a path — in which case switch to **test mode** (procedure.md, "Path resolution in test mode").
+- Destination root = the destination doc's default home, unless the user names a path.
 - Project root = whatever the scope answer produced.
+
+**If either root is not that tool's real home, this is a test-mode run** — a path given for the source counts just as much as one given for the destination. Test mode means every home path in the tool docs is resolved against the root you were given, and the real home is never read or written. procedure.md's "Path resolution in test mode" has the full rules; you read it in step 1, before anything is written, so it is enough here to notice that a custom root was supplied and carry that fact forward.
 
 ## 1. Load knowledge (relative to this file's directory, all required)
 
