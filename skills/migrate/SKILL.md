@@ -13,11 +13,18 @@ This distribution is installed through a plugin marketplace, and both Claude Cod
 
 ### 0-1. Determine the destination (do this first)
 
-The destination is **the tool you are running inside**. Determine it from the skill directory path.
+The destination is **the tool you are running inside** — not the tool whose directory this file happens to sit in. Getting this wrong writes settings into the wrong home, so treat it as the highest-risk decision in the whole run.
 
-- If the path contains `.claude`, the destination is `claude`.
-- If the path contains `.codex`, the destination is `codex`.
-- If neither matches, or both do, **do not guess** — ask the user which tool they are running.
+**The skill directory path is a hint, not proof.** Several tools load other tools' skill directories for compatibility — Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`. So a path containing `.claude` can perfectly well be running inside Grok or Cursor.
+
+Determine it this way:
+
+1. Form a hypothesis from the skill directory path (`.claude` → claude, `.codex` → codex).
+2. **Verify the hypothesis against the session you are actually in.** Ask yourself which tool's runtime you are executing under — the name of the product in your own system context, the tool set you were given, the slash-command namespace you were invoked through (a compat-loaded skill is usually namespaced, for example `/migrate:migrate` or `/user:migrate`).
+3. If the verification agrees with the hypothesis, proceed.
+4. **If it disagrees, or you cannot verify it, ask the user which tool they are running. Never guess.** A wrong destination is worse than one extra question.
+
+If the destination turns out to be a tool other than Claude Code or Codex CLI (Cursor or Grok Build reading this through a compatibility path), tell the user that this plugin distribution is meant for Claude Code and Codex CLI, and that the destination-specific entry point installed by `./install.sh <dest>` is the correct one for their tool. Stop rather than migrating with a guessed destination.
 
 Use the destination you determined as `<target>` below. If `core/tools/<target>.md` does not exist, say support is planned and stop.
 

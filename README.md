@@ -62,12 +62,20 @@ If Grok Build is not installed yet: `curl -fsSL https://x.ai/cli/install.sh | ba
 
 Installation and skill loading were checked on a real machine, not just in tests.
 
-| Tool | Install | Skill loads |
-|---|---|---|
-| Claude Code | plugin | verified — the running session lists `migrate` |
-| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`; the skill loader logs it), full round trip unverified |
-| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `migrate` |
-| Grok Build | `./install.sh grok` | unverified — no Grok Build on the development machine |
+| Tool | Install | Skill loads | Invoke as |
+|---|---|---|---|
+| Claude Code | plugin | verified — a live session lists `migrate` | `/migrate` |
+| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/migrate` |
+| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `migrate` | `/migrate` |
+| Grok Build | `./install.sh grok` | verified — `grok inspect` lists it | **`/user:migrate`** |
+
+**Grok Build has a built-in `/migrate`,** so this skill is namespaced to `/user:migrate` there. `grok inspect` shows the collision explicitly.
+
+### A caution about compatibility loading
+
+Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`. That means **a plugin installed for Claude also shows up inside Grok and Cursor**, namespaced (`/migrate:migrate`).
+
+Prefer the entry point installed for the tool you are actually using. The plugin distribution determines its destination at runtime and asks rather than guessing when it cannot confirm which tool it is running in — but the destination-specific entry point from `./install.sh <dest>` has its destination fixed, so it cannot be confused at all.
 
 ## Usage
 
