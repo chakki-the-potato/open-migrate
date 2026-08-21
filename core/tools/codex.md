@@ -116,3 +116,5 @@ trust_level = "trusted"
 ```
 
 Without it, everything you write into `.codex/` is a file the tool never reads. **Do not add the trust entry yourself** — trusting a repository is a security decision belonging to the user. Instead, check whether the entry already exists and, if it does not, put it in the report's manual-action list with the exact TOML block above and the project's absolute path filled in.
+
+**When Codex is the source**, the same entry tells you something different: whether the config you are reading was ever live. A project `.codex/` layer with no trust entry is configuration Codex has been ignoring. Migrate it anyway — the user wrote it and presumably wants it — but say so in the report, because a rule that never took effect in the source may behave differently once it becomes active on the target.
