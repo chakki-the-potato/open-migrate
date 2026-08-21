@@ -94,3 +94,15 @@ Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, 
    - To **extend an existing array value** (adding entries to `allow = [...]`), rewrite that single line in place. This is not an exception to "never re-serialize" but a form of minimal editing — an array's line *is* the whole value, so there is nothing else to touch. Preserve the order of existing elements, append after them, and de-duplicate.
 3. Quoting: wrap string values in double quotes. Write booleans and integers unquoted. Quote each array element individually when the elements are strings.
 4. Validate the TOML after writing (`python3 -c "import tomllib,sys;tomllib.load(open(sys.argv[1],'rb'))" config.toml`). On failure, restore from the backup, then stop and report.
+
+## Project scope surfaces
+
+Read these when Grok is the source in a project migration; write these when it is the target. Paths are relative to the project root.
+
+| Category | Location | Notes |
+|---|---|---|
+| Global rules | `AGENTS.md` | The project root's `AGENTS.md`; `rules/*.md` is home-scope only |
+| Settings | `.grok/config.toml` | **The project layer loads less than the home layer** — only MCP servers, plugins, and permission rules. Do not write model, `[ui] permission_mode`, or `[sandbox]` here; Grok ignores them at project level |
+| Skills | `.grok/skills/<name>/` | Whole directory |
+| Subagents | `.grok/agents/*.md` | camelCase frontmatter, same as home scope |
+| Hooks | `.grok/hooks/*.json` | Project hooks require `/hooks-trust` or `--trust` before Grok honors them — note this in the report |

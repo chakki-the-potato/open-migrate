@@ -148,3 +148,16 @@ These paths can be disabled in the user's settings, so never skip migration auto
 1. Copy the original to `.migrate/<run-id>/backup/<filename>` before modifying.
 2. Deep merge: merge objects per key, append to arrays then de-duplicate, preserve existing scalar values. Never resolve same-name collisions (server name, skill name, filename) on your own — confirm with the user during Confirm.
 3. Validate with `jq -e . <filename>` after writing. On failure, restore from the backup, then stop and report.
+
+## Project scope surfaces
+
+Read these when Cursor is the source in a project migration; write these when it is the target. Paths are relative to the project root.
+
+| Category | Location | Notes |
+|---|---|---|
+| Global rules | `.cursor/rules/*.mdc`, `AGENTS.md` | Same handling as home scope — `.mdc` keeps its frontmatter, and `AGENTS.md` counts as a rule source even when no `.mdc` exists |
+| Skills | `.cursor/skills/<name>/` | Whole directory |
+| Subagents | `.cursor/agents/*.md` | Project agents take precedence over the user's `~/.cursor/agents/` |
+| Commands | `.cursor/commands/*.md` | Deprecated surface; migrate per the write rules above |
+
+Cursor has no project-scope MCP, permission, or hook file — those live only in the home. When Cursor is the target of a project migration, the source's project-level MCP, permissions, and hooks are not migratable at project scope. Record them in the manual-action list with their source location instead of silently dropping them.
