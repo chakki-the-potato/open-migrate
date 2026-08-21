@@ -90,3 +90,29 @@ description: <the description value>
 - Pattern conversion: `Bash(git status:*)` → `pattern=["git", "status"]`. Split on whitespace and discard the trailing `:*`.
 - Write each rule on its own line even when several share a prefix — the positional union form (`["build", "test"]`) is a read-side optimization and is not used when writing.
 - **Only Bash prefix rules are convertible.** Path rules (`Read`/`Edit`), domain rules (`WebFetch`), MCP rules, and any pattern needing a mid-string wildcard cannot be expressed in this DSL — do not convert them; list the originals verbatim under manual action.
+
+## Project scope surfaces
+
+Read these when Codex is the source in a project migration; write these when it is the target. Paths are relative to the project root.
+
+| Category | Location | Notes |
+|---|---|---|
+| Global rules | `AGENTS.md` | `AGENTS.override.md` takes precedence here exactly as in home scope |
+| Settings | `.codex/config.toml` | Only some sections load at project level. Migrate MCP servers and permission rules; leave model, approval policy, and sandbox to home scope |
+| Hooks | `.codex/hooks.json` | Same `{"hooks": {...}}` structure as home scope |
+| Skills | `.codex/skills/<name>/` | Whole directory |
+| Permission rules | `[permission]` inside `.codex/config.toml` | **Not `rules/*.rules`.** The Starlark rules DSL is a home-scope surface; at project level the rules live inside `config.toml`. Convert accordingly rather than looking for a `.codex/rules/` directory |
+| Subagents | **No project surface** | Codex reads subagents only from `$CODEX_HOME/agents/`. A source's project-level subagents cannot be migrated to Codex project scope — record them under manual action with their source location |
+| Commands / prompts | **No project surface** | Same as subagents: `prompts/` is home-scope only |
+| Env injection | **No project surface** | `[shell_environment_policy]` loads from the home `config.toml` only |
+
+Categories with "No project surface" are not oversights — record each as impossible in the report rather than inventing a path. Writing `.codex/agents/` or `.codex/prompts/` produces files Codex never reads.
+
+**Trust gate — read this before writing anything.** Codex ignores a project's `.codex/config.toml`, `.codex/hooks.json`, and skills layer unless `~/.codex/config.toml` contains a trust entry for that project:
+
+```toml
+[projects."/absolute/path/to/project"]
+trust_level = "trusted"
+```
+
+Without it, everything you write into `.codex/` is a file the tool never reads. **Do not add the trust entry yourself** — trusting a repository is a security decision belonging to the user. Instead, check whether the entry already exists and, if it does not, put it in the report's manual-action list with the exact TOML block above and the project's absolute path filled in.

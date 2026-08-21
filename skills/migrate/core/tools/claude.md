@@ -51,3 +51,18 @@ Consider it installed when `~/.claude/settings.json` or `~/.claude/CLAUDE.md` ex
 | Approval policy | `permissions.defaultMode` in `settings.json` | Not migrated — approximate it against the target's corresponding concept and put it in the report as a suggestion only |
 | Model | top-level `model` in `settings.json` | Not migrated — quote the key and its **current value** verbatim in the report |
 | Never read | the remaining keys in `~/.claude.json` (app state), `projects/` session data, `.credentials.json` | security.md applies |
+
+## Project scope surfaces
+
+Read these when Claude is the source in a project migration; write these when it is the target. Paths are relative to the project root.
+
+| Category | Location | Notes |
+|---|---|---|
+| Global rules | `CLAUDE.md`, or `.claude/CLAUDE.md` | If both exist, migrate both and keep them separated per file (procedure.md's merge format) |
+| MCP | `.mcp.json` | Same server definition fields as the home-scope `mcpServers` object. **Write the file directly — do not use `claude mcp add` here.** The CLI rule in the write-rules table above governs home scope; this row is the more specific rule and wins for project scope (procedure.md precedence 3). Still emit `.migrate/<run-id>/mcp-commands.sh` as an audit record of what was written |
+| Settings | `.claude/settings.json` (shared), `.claude/settings.local.json` (personal) | Same schema as home `settings.json`: `hooks`, `permissions`, `env`. Merge each into the matching file — never move a setting between shared and local, since that changes who sees it |
+| Skills | `.claude/skills/<name>/` | Whole directory, supporting files included |
+| Subagents | `.claude/agents/*.md` | Same frontmatter rules as home scope |
+| Commands | `.claude/commands/*.md` | Same substitution rules as home scope |
+
+`.claude/settings.local.json` is personal configuration that repositories usually gitignore — but not always. Report its git status like any other file rather than assuming.

@@ -97,6 +97,27 @@ Natural language works as well: say "migrate my codex settings over" and it pick
 
 A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
+### Project configuration
+
+Repositories carry their own configuration — `CLAUDE.md`, `.claude/`, `.codex/`, `.cursor/rules/`, and so on. Name a project and it migrates that too.
+
+```
+migrate my codex settings, and the project config in ~/code/my-app too
+```
+
+Project scope differs from home scope in three ways worth knowing.
+
+- **Source and target are the same directory.** `<repo>/.codex/` becomes `<repo>/.claude/` in place.
+- **The diff is usually tracked by git.** The report tells you which files git tracks — and, in a monorepo, which repository answered — so you can see what a push would share with your team. The migration never stages or commits anything.
+- **Each project keeps its own ledger** at `<repo>/.migrate/ledger.json`, so re-running is safe per project.
+
+Projects are never discovered automatically — only the one you name is touched.
+
+Two surfaces need extra care and the report calls both out.
+
+- **Codex project config is trust-gated.** Codex ignores a project's `.codex/` layer unless `~/.codex/config.toml` trusts that path. The report gives you the exact TOML to add; the migration will not add it for you, because trusting a repository is your decision.
+- **`.agents/skills/` is already shared.** Cursor and Grok read that vendor-neutral path natively, so skills there are reported as "already being read" rather than copied. Claude and Codex do not read it, so for those targets it migrates — and since the original is never deleted, the report names any skill that ends up visible twice.
+
 ## Verified directions
 
 Each direction was scored by a deterministic verifier after actually migrating a fixture. These are measured results.
@@ -161,6 +182,15 @@ claude plugin validate . --strict   validate the manifests
 After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
 
 **Bump `version` in `.claude-plugin/plugin.json` whenever the content changes.** Plugin managers compare version numbers, not content — `claude plugin update` reports "already at the latest version" and keeps serving the stale cache if the version did not move, no matter how much the files changed.
+
+**Do not keep the plugin enabled while developing.** With both installed, two skills named `migrate` exist — the fresh one from `./install.sh` and the plugin's cache, which lags behind until you push, bump, and update. Which one loads is not predictable, and the stale copy silently lacks whatever you just wrote. Disable the plugin for the duration:
+
+```
+claude plugin disable migrate@migrate-marketplace   # develop against ./install.sh
+claude plugin enable migrate@migrate-marketplace    # restore when done
+```
+
+This bit us during development: an end-to-end test loaded the plugin cache instead of the freshly installed docs and only passed because the agent noticed the staleness on its own.
 
 To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc, then add one fixture, one target verifier, and one source check. Nothing is built per direction.
 
