@@ -1,10 +1,10 @@
-# target-codex.sh — Codex CLI 타겟 전용 체크.
-# _common.sh 가 내보낸 TARGET, mig_dir, is_noop_rerun, find_run_artifact,
-# script_dir, chk/chk_not 을 그대로 사용한다.
+# target-codex.sh — checks specific to a Codex CLI target.
+# Uses TARGET, mig_dir, is_noop_rerun, find_run_artifact, script_dir, and chk/chk_not
+# exactly as _common.sh exports them.
 #
-# TOML은 jq로 못 읽으므로 python3 tomllib로 JSON 변환 후 jq에 넘긴다.
-# _common.sh는 EXIT trap을 쓰지 않는 것을 확인했지만, 나중에 바뀌거나 이
-# 파일이 다른 곳에서 재사용될 경우를 대비해 clobber 대신 체이닝한다.
+# jq cannot read TOML, so convert to JSON with python3 tomllib and pipe that to jq.
+# _common.sh was verified not to use an EXIT trap, but chain instead of clobbering in case
+# that changes later or this file gets reused elsewhere.
 codex_add_exit_trap() {
   local new="$1" existing
   existing="$(trap -p EXIT 2>/dev/null | sed -e "s/^trap -- '//" -e "s/' EXIT\$//")"
@@ -29,19 +29,19 @@ codex_toml_to_json "$TARGET/config.toml" > "$codex_toml_json" || printf '{}' > "
 codex_toml_to_json "$TARGET/agents/reviewer.toml" > "$codex_reviewer_toml_json" || printf '{}' > "$codex_reviewer_toml_json"
 cat "$TARGET"/rules/*.rules > "$codex_rules_all" 2>/dev/null || true
 
-# 전역 규칙 (기존 보존 + 이관 + import 유지) — Claude CLAUDE.md와 동일 계약
+# Global rules (existing content preserved + migrated + imports kept) — same contract as Claude's CLAUDE.md
 chk "AGENTS.md exists"                 test -f "$TARGET/AGENTS.md"
 chk "AGENTS.md keeps existing content" grep -qF "Keep me." "$TARGET/AGENTS.md"
 chk "AGENTS.md migrated rule 1"        grep -qF "Answer in Korean." "$TARGET/AGENTS.md"
 chk "AGENTS.md migrated rule 2"        grep -qF "Never commit secrets." "$TARGET/AGENTS.md"
 chk "AGENTS.md preserves import line"  grep -qF "@~/.agent-rules-fixture.md" "$TARGET/AGENTS.md"
 
-# config.toml — 파싱 가능성 + 기존 최상위 값 보존
+# config.toml — parses as TOML + existing top-level values preserved
 chk "config.toml parses as TOML"       python3 "$script_dir/toml-to-json.py" "$TARGET/config.toml"
 chk "existing model preserved"         jq -e '.model == "gpt-5.6-sol"' "$codex_toml_json"
 chk "existing env key preserved"       jq -e '.shell_environment_policy.set.EXISTING_KEY == "keep"' "$codex_toml_json"
 
-# config.toml — env 주입 ([shell_environment_policy.set] <- 소스의 전역 env 블록)
+# config.toml — env injection ([shell_environment_policy.set] <- the source's global env block)
 if [ "$src_has_global_env" = 1 ]; then
 chk "env injected"                     jq -e '.shell_environment_policy.set.FIXTURE_FLAG == "1"' "$codex_toml_json"
 fi
@@ -52,23 +52,24 @@ chk "mcp everything arg: -y"           jq -e '.mcp_servers.everything.args | ind
 chk "mcp everything arg: package"      jq -e '.mcp_servers.everything.args | index("@modelcontextprotocol/server-everything") != null' "$codex_toml_json"
 chk "mcp everything env"               jq -e '.mcp_servers.everything.env.LOG_LEVEL == "info"' "$codex_toml_json"
 
-# config.toml — MCP http (시크릿은 원문으로 남지 않고 placeholder로 치환)
+# config.toml — MCP http (the secret must be replaced by the placeholder, never left verbatim)
 chk "mcp secretsvc url"                jq -e '.mcp_servers.secretsvc.url == "https://example.com/mcp"' "$codex_toml_json"
 chk "mcp secretsvc header redacted"    jq -e '.mcp_servers.secretsvc.http_headers."X-API-Key" == "<REDACTED-REENTER>"' "$codex_toml_json"
 
-# hooks.json — 최상위 구조 + 매처 변환 + 이벤트별 페이로드
+# hooks.json — top-level structure + matcher conversion + per-event payload
 chk "hooks.json valid JSON"            jq -e . "$TARGET/hooks.json"
 chk "hooks.json top-level shape"       jq -e 'keys == ["hooks"]' "$TARGET/hooks.json"
 chk "hook matcher converted to apply_patch" jq -e '.hooks.PreToolUse | map(select(.matcher == "apply_patch")) | length >= 1' "$TARGET/hooks.json"
 chk "hook body paired with matcher"    jq -e '.hooks.PreToolUse | map(select(.matcher == "apply_patch")) | .[0].hooks | map(select(.command == "echo pre-edit-check" and .timeout == 10)) | length >= 1' "$TARGET/hooks.json"
-# Notification 은 Codex 공식 11개 이벤트에 없다 — Codex 가 조용히 무시하는 죽은 설정이
-# 되므로 이관하지 않고 드롭한 뒤 리포트에 기록해야 한다(core/tools/codex.md 쓰기 규칙).
+# Notification is not among Codex's 11 official events — it would become dead config that
+# Codex silently ignores, so it must be dropped and recorded in the report rather than
+# migrated (core/tools/codex.md write rules).
 chk_not "notification event dropped"   jq -e '.hooks.Notification' "$TARGET/hooks.json"
 
-# hooks.json — Claude 전용 이벤트(ConfigChange)는 조용히 드롭, 어디에도 남으면 안 됨
+# hooks.json — the Claude-only event (ConfigChange) is silently dropped and must appear nowhere
 chk_not "ConfigChange dropped from hooks.json" grep -qF "ConfigChange" "$TARGET/hooks.json"
 
-# 권한 -> rules/*.rules (prefix_rule DSL, decision 매핑: allow/prompt/forbidden)
+# Permissions -> rules/*.rules (prefix_rule DSL, decision mapping: allow/prompt/forbidden)
 chk "rules: git status allow"    grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"git"[[:space:]]*,[[:space:]]*"status"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
 if [ "$src_has_ask_tier" = 1 ]; then
 chk "rules: git push prompt"     grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"git"[[:space:]]*,[[:space:]]*"push"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"prompt"[[:space:]]*\)' "$codex_rules_all"
@@ -77,35 +78,36 @@ fi
 chk "rules: npm run build allow" grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"npm"[[:space:]]*,[[:space:]]*"run"[[:space:]]*,[[:space:]]*"build"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
 chk "rules: npm run test allow"  grep -Eq 'prefix_rule\([[:space:]]*pattern[[:space:]]*=[[:space:]]*\[[[:space:]]*"npm"[[:space:]]*,[[:space:]]*"run"[[:space:]]*,[[:space:]]*"test"[[:space:]]*\][[:space:]]*,[[:space:]]*decision[[:space:]]*=[[:space:]]*"allow"[[:space:]]*\)' "$codex_rules_all"
 
-# 승인 정책 — 문서상 근사 매핑은 "제안"일 뿐이므로 config.toml에 자동 반영 금지
+# Approval policy — the docs make the approximation a suggestion only, so it must never be auto-applied to config.toml
 chk_not "approval_policy not auto-applied" jq -e '.approval_policy' "$codex_toml_json"
 chk_not "sandbox_mode not auto-applied"    jq -e '.sandbox_mode' "$codex_toml_json"
 
-# 스킬 (Claude와 동일 agent-skills 표준 — 그대로 복사)
+# Skills (same agent-skills standard as Claude — copied unchanged)
 chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
 chk "skill content identical"          grep -qF "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
 chk "skill supporting file copied"     test -f "$TARGET/skills/hello/reference/tone.md"
 chk "skill supporting file content"    grep -qF "Keep the greeting under two sentences." "$TARGET/skills/hello/reference/tone.md"
 
-# 서브에이전트 (md -> TOML)
+# Subagents (md -> TOML)
 chk "agent converted to toml"          test -f "$TARGET/agents/reviewer.toml"
 chk "agent toml parses"                python3 "$script_dir/toml-to-json.py" "$TARGET/agents/reviewer.toml"
 chk "agent description carried"        jq -e '(.description // "") | contains("Reviews diffs for style violations")' "$codex_reviewer_toml_json"
 chk "agent developer_instructions carried" jq -e '(.developer_instructions // "") | contains("strict code reviewer")' "$codex_reviewer_toml_json"
 
-# 커맨드 (md -> prompts/*.md)
-# 문서 갭: core/tools/codex.md의 "쓰기 규칙 (Codex가 타겟일 때)" 절은 이 방향(커맨드 ->
-# prompts)을 명시하지 않는다 — 스킬·서브에이전트 방향도 마찬가지로 이 절에서 빠져 있다.
-# "읽기 인벤토리"/"변환 규칙 (Codex -> 다른 도구)" 절이 prompts/*.md 를 Codex의 커맨드
-# 표면으로, TOML<->md 서브에이전트 변환을 대칭 규칙으로 명시하므로 그 형식을 그대로
-# 역방향 적용한다고 가정하고 체크를 작성한다. 문서 자체는 건드리지 않는다 — REPORT 참고.
+# Commands (md -> prompts/*.md)
+# Doc gap: the "Write rules (when Codex is the target)" section of core/tools/codex.md does not
+# spell out this direction (commands -> prompts) — the skills and subagents directions are
+# missing from that section too. Since "Config inventory" and "Conversion rules (Codex -> other
+# tools)" establish prompts/*.md as Codex's command surface and the TOML<->md subagent
+# conversion as a symmetric rule, these checks assume the same format applies in reverse.
+# The doc itself is left untouched — see the report.
 if [ "$src_has_commands" = 1 ]; then
 chk "prompt converted from command"    test -f "$TARGET/prompts/greet.md"
 chk "prompt keeps ARGUMENTS token"     grep -qF '$ARGUMENTS' "$TARGET/prompts/greet.md"
 chk "prompt body carried over"         grep -qF "warmly and mention today" "$TARGET/prompts/greet.md"
 fi
 
-# 백업 (존재 + 원본 내용) — security.md "쓰기 안전 규칙"(모든 타겟 공통) 적용, 파일명은 Codex 전용
+# Backups (existence + original contents) — security.md's write-safety rules apply to every target; the filenames are Codex-specific
 codex_backup_agents="$(find_run_artifact backup/AGENTS.md)"
 codex_backup_config="$(find_run_artifact backup/config.toml)"
 : "${codex_backup_agents:=$TARGET/.migrate/__missing__/backup/AGENTS.md}"

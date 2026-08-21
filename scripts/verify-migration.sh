@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# set -e 는 의도적으로 쓰지 않는다 — 개별 체크가 실패해도 전부 끝까지 돌려 한 번에 진단한다.
+# set -e is deliberately omitted — run every check to the end so a single pass diagnoses everything.
 set -uo pipefail
 TARGET="${1:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"
 TOOL="${2:?usage: verify-migration.sh <target-root> <target-tool> <source-tool>}"

@@ -1,7 +1,8 @@
-# source-claude.sh — Claude Code 를 소스로 이관했을 때 migration-report.md 에 남아야 하는
-# 소스 종속 문자열 체크. _common.sh 가 내보낸 mig_dir, chk/chk_not 만 쓴다 —
-# target 이 무엇이든(target-*.sh 가 만드는 변수에 기대지 않으므로) 안전하게
-# 조합된다. migration-report.md 파일 자체의 존재는 _common.sh 가 이미 검증했다.
+# source-claude.sh — checks for the source-dependent strings that must appear in
+# migration-report.md when Claude Code was the source. Uses only what _common.sh exports
+# (mig_dir, chk/chk_not), so it combines safely with any target — it never depends on
+# variables that a target-*.sh creates. _common.sh already verified that
+# migration-report.md itself exists.
 
 chk "report: source model noted"         grep -qF "claude-fable-5" "${mig_dir}migration-report.md"
 chk "report: dropped ConfigChange hook noted" grep -qF "ConfigChange" "${mig_dir}migration-report.md"

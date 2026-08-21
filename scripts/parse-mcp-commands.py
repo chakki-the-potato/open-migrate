@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mcp-commands.sh 를 파싱해 `claude mcp add` 호출을 구조화된 JSON 배열로 출력한다."""
+"""Parse mcp-commands.sh and print the `claude mcp add` invocations as a structured JSON array."""
 import json
 import shlex
 import sys

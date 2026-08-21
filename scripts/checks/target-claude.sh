@@ -1,22 +1,22 @@
-# target-claude.sh — Claude Code 타겟 전용 체크.
-# _common.sh 가 내보낸 TARGET, mig_dir, is_noop_rerun, find_run_artifact,
-# script_dir, chk/chk_not 을 그대로 사용한다.
+# target-claude.sh — checks specific to a Claude Code target.
+# Uses TARGET, mig_dir, is_noop_rerun, find_run_artifact, script_dir, and chk/chk_not
+# exactly as _common.sh exports them.
 
-# 전역 규칙 (기존 보존 + 이관 + import 유지)
+# Global rules (existing content preserved + migrated + imports kept)
 chk "CLAUDE.md exists"                 test -f "$TARGET/CLAUDE.md"
 chk "CLAUDE.md keeps existing content" grep -qF "Keep me." "$TARGET/CLAUDE.md"
 chk "CLAUDE.md migrated rule 1"        grep -qF "Answer in Korean." "$TARGET/CLAUDE.md"
 chk "CLAUDE.md migrated rule 2"        grep -qF "Never commit secrets." "$TARGET/CLAUDE.md"
 chk "CLAUDE.md preserves import line"  grep -qF "@~/.agent-rules-fixture.md" "$TARGET/CLAUDE.md"
 
-# settings.json — 기존 보존(deep merge) 검증
+# settings.json — existing content preserved (deep merge)
 chk "settings.json valid JSON"         jq -e . "$TARGET/settings.json"
 chk "existing model preserved"         jq -e '.model == "claude-fable-5"' "$TARGET/settings.json"
 chk "existing env key preserved"       jq -e '.env.EXISTING_KEY == "keep"' "$TARGET/settings.json"
 chk "existing allow rule preserved"    jq -e '.permissions.allow | index("Bash(ls:*)") != null' "$TARGET/settings.json"
 chk "existing hook preserved"          jq -e '[.hooks.PreToolUse[].matcher] | index("Read") != null' "$TARGET/settings.json"
 
-# settings.json — 훅 이관 (matcher + command 본문 + timeout)
+# settings.json — hooks migrated (matcher + command body + timeout)
 chk "hook matcher converted"           jq -e '[.hooks.PreToolUse[].matcher] | index("Edit|Write") != null' "$TARGET/settings.json"
 chk "hook body paired with matcher"    jq -e '.hooks.PreToolUse | map(select(.matcher == "Edit|Write")) | .[0].hooks | map(select(.command == "echo pre-edit-check" and .timeout == 10)) | length >= 1' "$TARGET/settings.json"
 chk "existing hook body preserved"     jq -e '.hooks.PreToolUse | map(select(.matcher == "Read")) | .[0].hooks | map(select(.command == "echo existing-pre")) | length >= 1' "$TARGET/settings.json"
@@ -24,12 +24,12 @@ if [ "$src_has_notification_hook" = 1 ]; then
 chk "notification hook migrated"       jq -e '[.hooks.Notification[].hooks[].command] | index("echo notify") != null' "$TARGET/settings.json"
 fi
 
-# settings.json — env 주입
+# settings.json — env injection
 if [ "$src_has_global_env" = 1 ]; then
 chk "env injected"                     jq -e '.env.FIXTURE_FLAG == "1"' "$TARGET/settings.json"
 fi
 
-# settings.json — 권한 (정답 리스트 존재 + 오답 리스트 부재)
+# settings.json — permissions (present in the right list, absent from the wrong one)
 chk "allow: git status"                jq -e '.permissions.allow | index("Bash(git status:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run build"             jq -e '.permissions.allow | index("Bash(npm run build:*)") != null' "$TARGET/settings.json"
 chk "allow: npm run test"              jq -e '.permissions.allow | index("Bash(npm run test:*)") != null' "$TARGET/settings.json"
@@ -43,7 +43,7 @@ chk_not "rm not also allowed"          jq -e '.permissions.allow | index("Bash(r
 chk "permissions: each rule in exactly one list" jq -e '[.permissions.allow[]?, .permissions.ask[]?, .permissions.deny[]?] as $a | ($a|length) == ($a|unique|length)' "$TARGET/settings.json"
 chk_not "defaultMode not auto-applied" jq -e '.permissions.defaultMode' "$TARGET/settings.json"
 
-# 스킬·커맨드·서브에이전트 (존재 + 내용)
+# Skills, commands, subagents (existence + contents)
 chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
 chk "skill content identical"          grep -qF "Say hello and summarize" "$TARGET/skills/hello/SKILL.md"
 chk "skill supporting file copied"     test -f "$TARGET/skills/hello/reference/tone.md"
@@ -58,12 +58,13 @@ chk "agent frontmatter name"           grep -q "^name: reviewer" "$TARGET/agents
 chk "agent description carried"        grep -qF "Reviews diffs for style violations" "$TARGET/agents/reviewer.md"
 chk "agent body carried over"          grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
-# 리포트 내용 중 소스 종속 문자열(예: Codex 모델명)은 source-<tool>.sh 로 옮겼다.
-# 여기 남은 건 리포트를 만들어내는 타겟 파서 산출물(mcp_json)에 의존하는 체크뿐이다.
+# Source-dependent report strings (a Codex model name, for example) moved to source-<tool>.sh.
+# What remains here are the checks that depend on the target-side parser output (mcp_json).
 
-# MCP 등록 명령 (셸 토큰 파싱 기반 — 주석·부분문자열·줄바꿈·제어연산자에 영향받지 않음)
-# mcp-commands.sh 는 run 마다 누적/재생성될 수 있어(예: no-op run 도 감사 목적으로
-# 빈 파일을 다시 만든다) "가장 최신 파일 하나"가 아니라 관련 run 전체를 합친다.
+# MCP registration commands (parsed as shell tokens — unaffected by comments, substrings,
+# line breaks, or control operators). mcp-commands.sh can accumulate or be regenerated per run
+# (a no-op run recreates an empty file for the audit trail), so this combines every relevant
+# run rather than trusting the single newest file.
 mcp_all="$(mktemp)"
 mcp_json="$(mktemp)"
 trap 'rm -f "$mcp_all" "$mcp_json"' EXIT
@@ -85,13 +86,13 @@ chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mc
 chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
 chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
 chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http") and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
-# "disabled_one" 은 소스가 정한 값이지만, 이 체크는 mcp_json(타겟 파서 산출물) 없이는
-# 표현 자체가 불가능하다 — source-*.sh 로 옮기면 그 소스가 이 mcp_json 을 만들지 않는
-# target 과 짝지어질 때 set -u 미정의 변수로 죽는다. 나머지 mcp add: * 체크와 같은
-# 이유로 여기 남겨둔다.
+# "disabled_one" is a source-defined value, but this check cannot even be expressed without
+# mcp_json (target parser output) — moving it to source-*.sh would kill the run with a set -u
+# undefined-variable error whenever that source is paired with a target that does not build
+# mcp_json. It stays here for the same reason as the other mcp add: * checks.
 chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
 
-# 백업 (존재 + 원본 내용) — 파일명은 Claude 전용, 조회 메커니즘은 _common.sh 의 find_run_artifact
+# Backups (existence + original contents) — filenames are Claude-specific; lookup uses _common.sh's find_run_artifact
 backup_claude="$(find_run_artifact backup/CLAUDE.md)"
 backup_settings="$(find_run_artifact backup/settings.json)"
 : "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
