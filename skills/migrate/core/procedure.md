@@ -33,6 +33,12 @@ Everything above describes **home scope** — the tool's own configuration direc
 
 Before trusting that answer, find out **which** repository answered. `git -C <project> rev-parse --show-toplevel` gives the repository root; compare it to the project root.
 
+**Stop when the working tree already has uncommitted changes.** Run `git -C <project> status --porcelain` during Scan. If it returns anything, the user has work in progress, and your writes would land in the same working tree — after which `git checkout .` to undo the migration destroys their work too. Do not migrate that project. Report what is uncommitted, say the project was skipped for that reason, and let the user commit or stash before re-running. Untracked files that the migration itself would create are the exception; anything else means stop.
+
+This is worth the interruption. A migration that is hard to undo is worse than one that has not run yet.
+
+**Check whether the destination path is ignored, not just untracked.** `git -C <project> check-ignore -q <path>` succeeding means the file will never be shared no matter what the user does with the diff — a stronger fact than "untracked", and one that can defeat the point of the migration. A team that expects `.claude/skills/` in the repository gets nothing if that path is in `.gitignore`. Report ignored destinations explicitly; still migrate them, since the configuration works locally either way.
+
 **Run this check on its own.** It exits non-zero whenever the project is not in a repository — a normal outcome, not an error. Chaining it into a longer `&&` sequence silently aborts everything after it, and the output of a run where the later checks never executed looks identical to a run where they found nothing. The symlink check and the Codex trust check are exactly the kind of thing that disappears this way, so keep each check a separate command.
 
 - **Same path** — the project is its own repository. Report tracking status directly.

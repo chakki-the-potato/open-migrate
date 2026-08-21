@@ -106,3 +106,4 @@ Read these when Grok is the source in a project migration; write these when it i
 | Skills | `.grok/skills/<name>/` | Whole directory |
 | Subagents | `.grok/agents/*.md` | camelCase frontmatter, same as home scope |
 | Hooks | `.grok/hooks/*.json` | Project hooks require `/hooks-trust` or `--trust` before Grok honors them — note this in the report |
+| Vendor-neutral skills | `.agents/skills/<name>/` | **Not listed in any tool's own inventory** — it is a shared project surface. procedure.md's "`.agents/` is shared, not migratable" rule governs it: migrate it when this target does not read the path natively, leave it alone when it does. Never skip it just because it is absent from the table above |
