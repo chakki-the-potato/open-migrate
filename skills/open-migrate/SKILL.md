@@ -12,9 +12,21 @@ Migrate one tool's configuration into another. Both tools are inputs: you are to
 
 ### 0-1. Source and destination
 
-Read them from the user's input if present. `/open-migrate codex claude` means **source `codex`, destination `claude`** — source first, matching the order of "migrate from X to Y". Some tools substitute arguments into `$ARGUMENTS`; Cursor does not, so also read the message body. A natural-language request ("move my codex settings into claude") carries the same two values.
+Two values decide everything: where the settings come from and where they go. Read what the user gave you, then ask for the rest.
 
-Ask for whatever is still missing. Do not guess, and do not assume the tool you are running inside is either one.
+| What you were given | What to do |
+|---|---|
+| **Both** — `/open-migrate codex claude` | Proceed. Source `codex`, destination `claude` |
+| **One** — `/open-migrate codex` | Take it as the **source** and ask only for the destination |
+| **Neither** — `/open-migrate` | Ask for the source, then the destination |
+
+**Positional order is source first**, matching the word order of "migrate from X to Y". So a lone positional argument is the source.
+
+**Wording overrides position.** If the request says which direction it means, believe it — "move my settings **into** claude" makes `claude` the destination even though it appears alone, and "migrate **from** codex" makes `codex` the source. Only fall back on position when the wording says nothing.
+
+Some tools substitute arguments into `$ARGUMENTS`; Cursor does not, so read the message body as well.
+
+Ask one at a time, and confirm both back to the user before moving on — a wrong direction writes settings into the wrong home. Never guess, and never assume the tool you are running inside is either one.
 
 When asking, list what is actually on the machine — check whether `~/.claude`, `~/.codex`, `~/.cursor`, and `~/.grok` exist and present what you find. Existence only: do not open anything inside them. That keeps this compatible with test mode, where reading a real home is forbidden — knowing a directory is there tells you what to offer without pulling real configuration into the run.
 
