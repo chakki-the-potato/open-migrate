@@ -17,7 +17,7 @@
 | 훅 | `hooks.json` (주 위치) 또는 `config.toml` `[[hooks.Event]]` 인라인 정의 | Claude와 동일 JSON 구조. 주의: `config.toml` 의 `[hooks.state]` 는 훅 정의가 아니라 신뢰 해시 캐시다 — 이관 대상이 아니며 타겟에서 재생성된다 |
 | 권한 규칙 | `rules/*.rules` | Starlark `prefix_rule(pattern=[...], decision=...)` |
 | 서브에이전트 | `agents/*.toml` | TOML: `description`, `developer_instructions` |
-| env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 Claude 에 등가물 없음 → 리포트에 이관 불가로 기록 | TOML |
+| env 주입 | `config.toml` `[shell_environment_policy]` — `set` 테이블만 이관. `inherit`·`exclude`·`include_only` 는 값 주입이 아니라 상속 정책이라 대응 개념을 가진 타겟이 없다(Grok 은 같은 테이블명을 쓰지만 그쪽도 정책 필드다) → 리포트에 이관 불가로 기록 | TOML |
 | 승인 정책 | `config.toml` `approval_policy`, `sandbox_mode` | 근사 매핑만 |
 | 모델/개성 | `config.toml` `model`, `personality` 등 최상위 키 | 이관 안 함 — 리포트에 키와 **현재 값**을 그대로 인용해 안내 |
 | 프로젝트 신뢰 | `config.toml` `[projects."<path>"]` | 이관 불가 — 안내만 |
@@ -31,12 +31,12 @@
 ### 훅
 - 공식 이벤트 11개: SessionStart, SessionEnd, SubagentStart, SubagentStop, PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, UserPromptSubmit, Stop. Claude와 전부 동명 — 이벤트명 무변환.
 - **공식 11개 밖의 이벤트명이 hooks.json에 있으면** (Codex는 조용히 무시하는 죽은 설정): 타겟 도구 문서의 유효 이벤트 목록을 확인해 동명 이벤트가 존재하면 무변환 이관하고, 없으면 드롭 후 리포트에 기록한다. 예: `Notification`은 Codex 비공식이지만 Claude에 존재 — 이관.
-- 도구명 매처: `apply_patch` → Claude `Edit|Write`. `shell`/`local_shell`/`exec_command` 변형 → `Bash`. `mcp__server__tool`은 동일.
+- 도구명 매처: `apply_patch` → 타겟의 편집 도구. Claude·Grok 은 `Edit|Write` 두 도구로 갈라져 있으므로 정규식 대안으로 둘 다 매칭시키고, Cursor 는 `Write` 하나다. `shell`/`local_shell`/`exec_command` 변형 → Claude·Grok `Bash`, Cursor `Shell`. `mcp__server__tool`은 어느 타겟에서나 동일. **타겟 문서에 도구명 매핑표가 있으면 그 표가 우선한다.**
 - timeout 단위는 초로 동일.
 
 ### 커스텀 프롬프트 (prompts/*.md → 타겟 커맨드)
-- deprecated 표면이지만 존재하면 이관: 파일 내용을 그대로 타겟의 커맨드 파일로 옮긴다 (Claude: `commands/<name>.md`).
-- `$1`-`$9`/`$ARGUMENTS` 치환 토큰은 Claude 커맨드와 호환 — 원문 그대로 유지.
+- deprecated 표면이지만 존재하면 이관한다. **목적지와 형식은 타겟 문서가 정한다** — 타겟에 커맨드 표면이 있으면 그 파일로(Claude `commands/<name>.md`), 없으면 타겟 문서가 지정한 대체 표면으로 옮긴다(Cursor·Grok 은 스킬). 파일 내용은 그대로 옮긴다.
+- `$1`-`$9`/`$ARGUMENTS` 치환 토큰은 **원문 그대로 유지**한다. 타겟이 치환을 지원하지 않으면 토큰이 문자 그대로 남는데, 그것이 손실이라는 사실만 리포트에 적고 본문을 고치지 않는다.
 
 ### 권한 규칙 (rules DSL)
 - decision 매핑: `allow`→allow, `prompt`→ask, `forbidden`→deny.

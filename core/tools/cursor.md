@@ -73,7 +73,9 @@
 
 - 미지원(대응 Cursor 이벤트 없음): `Notification`, 그리고 승인 요청 계열 이벤트 — 소스가 Claude 면 `PermissionDenied`, 소스가 Codex 면 `PermissionRequest` 다(두 도구가 서로 다른 이름을 쓴다 — claude.md 훅 행과 codex.md 공식 이벤트 목록 참조). 어느 쪽이든 드롭 후 리포트에 기록.
 - 위 8개와 미지원 2개 밖의 이벤트명은 매핑을 추측하지 말고 드롭 후 수동 확인 항목으로 남긴다.
-- 도구명 매처 매핑 (Claude/Codex → Cursor): `Bash`→`Shell`, `Read`→`Read`, `Write`→`Write`, `Edit`→`Write`, `Grep`→`Grep`, `Task`→`Task`. `Glob`·`WebFetch`·`WebSearch` 는 대응 매처가 없어 드롭 후 기록.
+- 도구명 매처 매핑 (Claude → Cursor): `Bash`→`Shell`, `Read`→`Read`, `Write`→`Write`, `Edit`→`Write`, `Grep`→`Grep`, `Task`→`Task`. `Glob`·`WebFetch`·`WebSearch` 는 대응 매처가 없어 드롭 후 기록.
+- 도구명 매처 매핑 (Codex → Cursor): Codex 는 도구 이름이 다르다 — `apply_patch`→`Write`, `Bash`→`Shell`(Codex 가 shell 계열을 `Bash` 로 정규화한다), `Task`→`Task`. 그 밖의 Codex 도구명은 Cursor 에 대응 매처가 없어 드롭 후 기록한다. **Claude 이름을 중간 표현으로 경유하지 마라** — 2단 변환은 매핑이 다대일인 지점에서 없던 손실을 만든다.
+- 도구명 매처 매핑 (Grok → Cursor): Grok 은 Claude 와 같은 도구명을 쓰므로 위 Claude 행을 그대로 적용한다.
 - 도구명 매처 매핑 (Cursor → Claude/Codex): `Shell`→`Bash`, `Read`→`Read`, `Grep`→`Grep`, `Task`→`Task`. `Write` 는 위 매핑에서 `Write` 와 `Edit` 두 개가 합류한 결과라 역방향이 유일하지 않다 — **`Edit|Write` 정규식 대안으로 되돌려 둘 다 매칭시킨다.** 둘 중 하나만 고르면 소스에 없던 좁힘이 생기므로 금지한다. 이 근사를 리포트에 기록한다.
 - Cursor 전용 이벤트(`postToolUseFailure`, `beforeShellExecution`, `afterFileEdit` 등)는 Claude/Codex 에 등가물이 없다 — Cursor 가 소스일 때 드롭 후 기록.
 
