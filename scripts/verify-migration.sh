@@ -17,9 +17,15 @@ if [ "$SCOPE" = "project" ]; then
 else
   tool_checks="$script_dir/checks/target-$TOOL.sh"
 fi
-# The source-dependent report strings are the same in either scope, so this file is
-# not scope-qualified.
-source_checks="$script_dir/checks/source-$SOURCE.sh"
+# Source-dependent report strings differ by scope — the home fixture carries things
+# (keybindings, a model name, a disabled server) that a project fixture has no reason
+# to hold. Use a scope-specific file when one exists, otherwise fall back to the
+# home-scope checks.
+if [ "$SCOPE" = "project" ] && [ -f "$script_dir/checks/source-$SOURCE-project.sh" ]; then
+  source_checks="$script_dir/checks/source-$SOURCE-project.sh"
+else
+  source_checks="$script_dir/checks/source-$SOURCE.sh"
+fi
 if [ ! -f "$tool_checks" ]; then
   echo "ERROR: no checks for target tool '$TOOL' ($tool_checks)"
   exit 1

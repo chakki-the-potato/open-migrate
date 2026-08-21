@@ -12,4 +12,12 @@ chk "project ledger in project root"  test -f "$TARGET/.migrate/ledger.json"
 
 # Git status has to be reported, not acted on. The migration must never create a
 # commit — a repository left mid-commit would be worse than one left dirty.
-chk_not "no commit created by migration" sh -c 'git -C "$0" log --oneline -1 --since="10 minutes ago" 2>/dev/null | grep -q .' "$TARGET"
+#
+# Only meaningful when the project root is itself the top of a repository. Without
+# that guard `git -C` walks upward and finds the enclosing repo's commits, which
+# have nothing to do with the migration.
+chk_not "no commit created by migration" sh -c '
+  top=$(git -C "$0" rev-parse --show-toplevel 2>/dev/null) || exit 1
+  [ "$top" = "$(cd "$0" && pwd)" ] || exit 1
+  git -C "$0" log --oneline -1 --since="10 minutes ago" 2>/dev/null | grep -q .
+' "$TARGET"
