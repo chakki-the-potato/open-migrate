@@ -45,6 +45,15 @@ codex plugin add migrate@migrate-marketplace
 
 The plugin distribution determines which tool it is running in and uses that as the destination.
 
+**Updating** also differs. Claude Code has a one-step update; Codex has no `plugin update` — refresh the marketplace snapshot first, then reinstall.
+
+```
+claude plugin update migrate@migrate-marketplace
+
+codex plugin marketplace upgrade migrate-marketplace
+codex plugin add migrate@migrate-marketplace
+```
+
 ### Cursor and Grok Build — install script
 
 ```
