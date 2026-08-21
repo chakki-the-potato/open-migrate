@@ -24,6 +24,18 @@ Treat a value as a secret when any of these hold.
 3. Record only the key name and its location (file, server name) in the report's "Manual action required" section so the user can re-enter it.
 4. If you must display one, show at most the first 4 characters followed by `…`.
 
+## Confirming that nothing leaked
+
+Verifying the target is clean is itself a place secrets escape: searching for the literal value puts it on a command line, which is exactly what rule 1 forbids. Never `grep` for a secret you read.
+
+Check it the other way round:
+
+- **Confirm the placeholder is present** where the secret should have been — `grep -rF '<REDACTED-REENTER>' <target>`.
+- **Scan for shapes, not values** — the known prefixes and high-entropy patterns from the detection rules above (`grep -rE 'sk-[A-Za-z0-9_-]{16,}' <target>`). This finds a leak without naming what leaked.
+- **Compare counts, not contents** — if the source had three secret-bearing keys, the target should have three placeholders.
+
+The same applies to a value you merely suspect is a secret. If it needs checking, it needs handling as one.
+
 ## Write safety
 
 1. Before modifying any existing target file, copy the original to `.migrate/<run-id>/backup/`.
