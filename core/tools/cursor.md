@@ -10,7 +10,7 @@
 
 | 카테고리 | 위치 | 포맷 |
 |---|---|---|
-| 전역 규칙(Rules) | `.cursor/rules/*.mdc` (프로젝트 루트) | frontmatter: `description`/`globs`/`alwaysApply` + markdown 본문. 같은 디렉토리의 순수 `.md` 파일은 Cursor가 무시한다 — Cursor 공식 문서는 순수 markdown 규칙에는 `AGENTS.md` 를 쓰라고 안내한다. Cursor는 `AGENTS.md`·`CLAUDE.md` 를 네이티브로 읽는다 |
+| 전역 규칙(Rules) | `.cursor/rules/*.mdc` (프로젝트 루트) **그리고** `AGENTS.md` (`~/.cursor/AGENTS.md` 및 프로젝트 루트) | frontmatter: `description`/`globs`/`alwaysApply` + markdown 본문. 같은 디렉토리의 순수 `.md` 파일은 Cursor가 무시한다 — Cursor 공식 문서는 순수 markdown 규칙에는 `AGENTS.md` 를 쓰라고 안내한다. Cursor는 `AGENTS.md`·`CLAUDE.md` 를 네이티브로 읽으므로 **`AGENTS.md` 도 전역 규칙 소스로 읽는다** — `.mdc` 가 하나도 없어도 `AGENTS.md` 가 있으면 그것이 규칙 소스다 |
 | User Rules | 로컬 파일 없음 — Cursor 계정에 저장(클라우드 동기화) | 이관 불가 — 수동 안내만 |
 | MCP | `~/.cursor/mcp.json` `mcpServers` | JSON. stdio: `command`/`args`/`env`/`envFile`. remote: `url`/`headers`. 서버명에 공백 허용. `${env:NAME}` 보간 지원. enabled/disabled 플래그 없음 |
 | 스킬 | `~/.cursor/skills/<name>/SKILL.md` | agent-skills 표준 레이아웃. frontmatter: `name`/`description`/`paths`/`disable-model-invocation`/`metadata`. `$ARGUMENTS` 치환 없음. `~/.cursor/skills-cursor/` 는 앱 내장 콘텐츠 — 양방향 이관 대상 아님 |
@@ -26,7 +26,8 @@
 
 ### 전역 규칙 (Rules)
 - `.cursor/rules/*.mdc` → 타겟의 전역 규칙 파일(Claude: `CLAUDE.md`, Codex: `AGENTS.md`)에 원문 그대로 병합(요약·재작성 금지). frontmatter(`description`/`globs`/`alwaysApply`)를 포함한 파일 전체를 옮긴다 — 펼치거나 frontmatter만 추출하지 않는다.
-- 파일이 여러 개면 파일별로 구분해 순서대로 병합.
+- `AGENTS.md`(`~/.cursor/AGENTS.md` 또는 프로젝트 루트) 도 같은 방식으로 옮긴다. Cursor 가 네이티브로 읽는 규칙 표면이므로 `.mdc` 와 동등하게 다룬다 — **`.mdc` 가 없다는 이유로 "이관할 규칙 없음" 으로 처리하지 마라.** 두 표면이 모두 있으면 둘 다 옮기고 파일별로 구분한다.
+- 파일이 여러 개면 파일별로 구분해 순서대로 병합한다. 구분은 소스 파일명을 담은 하위 헤딩(`### <파일명>`)으로 하고, 타겟 쪽 병합 섹션 헤딩(`## Migrated from ...`)보다 한 단계 아래를 쓴다. 소스 본문에 더 상위 레벨 헤딩(`# ...`)이 있어도 **본문은 원문 그대로 두고 레벨을 조정하지 않는다** — 헤딩 레벨 역전은 허용되며 원문 보존이 우선이다.
 - User Rules: 로컬에 존재하지 않아 자동 이관 불가 — 리포트에 "Cursor 계정의 User Rules를 직접 확인해 타겟에 옮길 것" 으로 안내만 남긴다.
 
 ### MCP
@@ -47,12 +48,13 @@
 
 ### 서브에이전트
 - `agents/<name>.md` → 타겟 서브에이전트 형식. `name`/`description`은 그대로 매핑.
-- `model`/`readonly`/`is_background`는 Claude 서브에이전트 frontmatter에 대응 필드가 없다 — 드롭 후 리포트에 기록.
+- `model`: Claude 서브에이전트 frontmatter에도 `model` 필드가 있다. 필드가 없어서가 아니라 **값 공간이 도구마다 달라서** 주의가 필요하다. `inherit` 은 양쪽 공통 값이므로 **그대로 옮긴다**(무손실). 그 외의 값은 타겟에서 유효한 별칭·모델 ID 임이 확인되지 않으면 필드를 드롭하고 리포트에 소스 값을 그대로 인용해 수동 확인 항목으로 남긴다. 값을 추측해 바꿔 쓰지 마라.
+- `readonly`/`is_background`는 Claude 서브에이전트 frontmatter에 대응 필드가 없다 — 드롭 후 리포트에 기록.
 
 ### 훅
 - 구조 변환: flat 배열의 camelCase 이벤트명을 타겟의 PascalCase 이벤트명(Claude/Codex 공통 11개)으로, 배열 항목 하나하나를 타겟의 `{matcher, hooks:[...]}` 형태로 감싼다.
 - 이벤트명 매핑표는 아래 "훅 이벤트 매핑" 참고.
-- 매처: Cursor 훅에는 애초에 `Glob`/`WebFetch`/`WebSearch` 도구 매처가 없으므로(Cursor 자체에 이 도구명 매처가 없음) 이 방향에서는 잃을 것이 없다 — 반대 방향(쓰기 규칙)에서 중요해진다.
+- 매처: `Glob`/`WebFetch`/`WebSearch` 는 Cursor 훅에 애초에 없는 매처라 이 방향에서는 옮겨올 대상 자체가 없다 — 이 셋은 반대 방향(쓰기 규칙)에서만 문제가 된다. 반면 **Cursor `Write` 매처는 이 방향에서 실제 손실이 있다** — 반대 방향 매핑에서 Claude `Write` 와 `Edit` 이 Cursor `Write` 하나로 합류하므로 역방향 복원이 유일하지 않다. 아래 도구명 매처 매핑의 Cursor → Claude/Codex 규칙을 따른다.
 
 ### 훅 이벤트 매핑
 
@@ -69,9 +71,10 @@
 
 `UserPromptSubmit` → `beforeSubmitPrompt` 만 단순 대소문자 변환이 아니다 — 나머지 7개는 첫 글자만 소문자로 바꾸면 된다.
 
-- 미지원(대응 Cursor 이벤트 없음): `Notification`, `PermissionRequest` — 드롭 후 리포트에 기록.
+- 미지원(대응 Cursor 이벤트 없음): `Notification`, 그리고 승인 요청 계열 이벤트 — 소스가 Claude 면 `PermissionDenied`, 소스가 Codex 면 `PermissionRequest` 다(두 도구가 서로 다른 이름을 쓴다 — claude.md 훅 행과 codex.md 공식 이벤트 목록 참조). 어느 쪽이든 드롭 후 리포트에 기록.
 - 위 8개와 미지원 2개 밖의 이벤트명은 매핑을 추측하지 말고 드롭 후 수동 확인 항목으로 남긴다.
-- 도구명 매처 매핑: `Bash`→`Shell`, `Read`→`Read`, `Write`→`Write`, `Edit`→`Write`, `Grep`→`Grep`, `Task`→`Task`. `Glob`·`WebFetch`·`WebSearch` 는 대응 매처가 없어 드롭 후 기록.
+- 도구명 매처 매핑 (Claude/Codex → Cursor): `Bash`→`Shell`, `Read`→`Read`, `Write`→`Write`, `Edit`→`Write`, `Grep`→`Grep`, `Task`→`Task`. `Glob`·`WebFetch`·`WebSearch` 는 대응 매처가 없어 드롭 후 기록.
+- 도구명 매처 매핑 (Cursor → Claude/Codex): `Shell`→`Bash`, `Read`→`Read`, `Grep`→`Grep`, `Task`→`Task`. `Write` 는 위 매핑에서 `Write` 와 `Edit` 두 개가 합류한 결과라 역방향이 유일하지 않다 — **`Edit|Write` 정규식 대안으로 되돌려 둘 다 매칭시킨다.** 둘 중 하나만 고르면 소스에 없던 좁힘이 생기므로 금지한다. 이 근사를 리포트에 기록한다.
 - Cursor 전용 이벤트(`postToolUseFailure`, `beforeShellExecution`, `afterFileEdit` 등)는 Claude/Codex 에 등가물이 없다 — Cursor 가 소스일 때 드롭 후 기록.
 
 ### 훅 파일 구조
@@ -98,6 +101,8 @@
 
 ### 호환 로드 (이관이 아예 불필요할 수 있는 경우)
 
+이 절은 **Cursor 가 타겟일 때만** 적용된다. Cursor 가 소스일 때는 무시한다.
+
 Cursor 는 다른 도구의 설정 일부를 **변환 없이 직접 읽는다.** Scan 단계에서 이를 확인하고, 해당하면 이관 대신 "이미 읽히고 있음" 으로 리포트에 기록해 중복 설치를 피한다.
 
 - 규칙: `AGENTS.md`·`CLAUDE.md` 를 네이티브로 읽는다.
@@ -105,10 +110,10 @@ Cursor 는 다른 도구의 설정 일부를 **변환 없이 직접 읽는다.**
 - 서브에이전트: `.claude/agents/`, `.codex/agents/`, `~/.claude/agents/`, `~/.codex/agents/` 를 읽는다.
 - 훅: 설정에서 third-party 를 켜면 `.claude/settings.json`·`~/.claude/settings.json` 의 훅을 위 매핑표대로 자동 변환해 읽는다.
 
-이 경로들은 사용자 설정에 따라 꺼져 있을 수 있으므로, 이관을 생략하기 전에 사용자에게 확인한다.
+이 경로들은 사용자 설정에 따라 꺼져 있을 수 있으므로 자동으로 생략하지 않는다 — Confirm 단계에서 사용자에게 확인한다. 전체 승인처럼 되물을 수 없는 모드에서는 **생략하지 말고 이관한 뒤** 중복 가능성을 리포트에 기록한다.
 
 ### 권한 규칙
-- `Shell(cmd)`: 콜론 인자 매칭(`curl:*`)이 Claude `Bash(cmd:*)` 문법과 형태가 같다 — 값을 그대로 옮긴다. Codex로 갈 때는 codex.md의 "권한 쓰기 문법"(공백으로 토큰 분리, `:*` 제거, `prefix_rule(pattern=[...], decision="...")`)을 그대로 적용한다.
+- `Shell(cmd)` → Claude `Bash(cmd)`: **토큰 이름을 반드시 개명한다.** 인자 매칭 문법(콜론 문법 `curl:*`)은 Claude `Bash(cmd:*)` 와 형태가 같아 그대로 유지하지만 도구 이름은 다르다 — Claude 에는 `Shell` 도구가 없어 `Shell(...)` 을 그대로 쓰면 아무것도 매칭하지 않는 무효 규칙이 된다. 예: `Shell(git status:*)` → `Bash(git status:*)`. 이 개명은 쓰기 규칙 표의 Cursor 권한 행(소스 `Bash(...)` → `Shell(...)`)과 정확히 역방향 한 쌍이며, 둘 중 하나만 적용하면 왕복이 깨진다. Codex로 갈 때는 codex.md의 "권한 쓰기 문법"(공백으로 토큰 분리, `:*` 제거, `prefix_rule(pattern=[...], decision="...")`)을 그대로 적용한다.
 - `Read(glob)` → Claude `Read(glob)` 그대로.
 - `Write(glob)` → Claude는 `Edit`/`Write` 두 도구로 분리돼 있어 근사가 필요하다: 대상이 신규 생성인지 기존 수정인지 불명확하면 `Edit(glob)`과 `Write(glob)` 양쪽에 추가하고 근사 매핑으로 리포트에 기록.
 - `WebFetch(domain)` → Claude `WebFetch(domain)` 그대로.
@@ -128,7 +133,7 @@ Cursor 는 다른 도구의 설정 일부를 **변환 없이 직접 읽는다.**
 | 스킬 | `~/.cursor/skills/<name>/SKILL.md` | 디렉토리째 복사. **동명 스킬이 있으면 건너뛰고 리포트에 기록**. `~/.cursor/skills-cursor/` 에는 절대 쓰지 않는다(앱 전용 영역) |
 | 커맨드 | `~/.cursor/skills/<name>/SKILL.md` (커맨드가 아니라 스킬로 이관) | `.cursor/commands/*.md` 는 deprecated이므로 신규 쓰기 대상에서 제외하고, 소스 커맨드를 `name`/`description` frontmatter로 감싸 스킬로 변환해 쓴다. `name` 은 소스 파일명(확장자 제외). 소스에 `description` 이 없으면 지어내지 말고 본문 첫 문장을 그대로 쓰고, 합성했다는 사실을 리포트에 기록한다. 소스의 `$1`-`$9`/`$ARGUMENTS` 치환 토큰은 Cursor 스킬에 대응 문법이 없어 **버려진다** — 손실로 리포트에 명시 |
 | 서브에이전트 | `~/.cursor/agents/<name>.md` | frontmatter는 `name`/`description`/`model`/`readonly`/`is_background`만 쓴다. 소스가 Claude면 `tools`/`color`는 Cursor에 대응 필드가 없어 드롭 후 리포트. **동명 파일이 있으면 덮어쓰지 말고 건너뛴 뒤 리포트에 기록** |
-| 훅 | `~/.cursor/hooks.json` | `version: 1`, flat 배열, camelCase 이벤트명으로 변환해 append(동일 command면 스킵). 이벤트명 매핑은 위 "훅 이벤트 매핑"의 확인된 범위만 적용 — 나머지는 매핑을 추측하지 말고 수동 확인 항목으로 남긴다. `Notification`·`PermissionRequest`는 Cursor 미지원이므로 드롭 후 리포트. `Glob`/`WebFetch`/`WebSearch` 매처로 스코프된 훅은 대응 매처가 없어 드롭 후 리포트 |
+| 훅 | `~/.cursor/hooks.json` | `version: 1`, flat 배열, camelCase 이벤트명으로 변환해 append(동일 command면 스킵). 이벤트명 매핑은 위 "훅 이벤트 매핑"의 확인된 범위만 적용 — 나머지는 매핑을 추측하지 말고 수동 확인 항목으로 남긴다. `Notification` 과 승인 요청 계열 이벤트(Claude `PermissionDenied` / Codex `PermissionRequest`)는 Cursor 미지원이므로 드롭 후 리포트. `Glob`/`WebFetch`/`WebSearch` 매처로 스코프된 훅은 대응 매처가 없어 드롭 후 리포트 |
 | 권한 | `~/.cursor/cli-config.json` `permissions.allow` / `permissions.deny` | 토큰 개명: 소스의 Bash/셸 규칙(`Bash(git status:*)`, Codex `prefix_rule(["git","status"])`)은 `Shell(...)` 로 바꾼다 — 콜론 인자 문법(`:*`)은 그대로 유지한다. 소스가 Claude면 `Edit(glob)`과 `Write(glob)`이 둘 다 Cursor `Write(glob)` 하나로 합쳐진다 — 병합 후 자연히 중복 제거됨을 리포트에 안내. 배열에 append, 중복 제거. **`ask`/`prompt` 티어는 Cursor 에 없다** — 소스의 ask 규칙을 `allow` 나 `deny` 어디에도 넣지 말고(둘 다 원래 의미를 왜곡한다) 수동 조치 목록에 원문 그대로 올린다. `approvalMode`는 이미 값이 있어도 **바꾸지 않는다** — 근사 매핑표는 제안으로만 리포트에 기재 |
 | env 주입 | — | Cursor에는 전역 env 표면이 없다 — 소스의 전역 env 블록(예: Claude `settings.json`의 `env`, Codex `[shell_environment_policy.set]`)은 **이관 불가**. 누락시키지 말고 수동 조치 목록에 키 이름과 소스 쪽 위치를 전부 기록해, 사용자가 MCP 서버별 `env`나 셸 프로파일로 직접 옮기게 안내한다 |
 | 승인 정책 | — | `approvalMode`를 자동 설정하지 않는다. 근사 매핑은 procedure.md 매핑표를 리포트 제안으로만 사용 |
