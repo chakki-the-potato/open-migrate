@@ -55,9 +55,12 @@ Run exactly this. Do not improvise a variant; the exclusions are what keep the t
 ```bash
 find "$HOME" -maxdepth 5 \
   \( -path "$HOME/.*" -o -name node_modules -o -name Library -o -name .Trash -o -name .git \) -prune -o \
-  -type d \( -name '.claude' -o -name '.codex' -o -name '.cursor' -o -name '.grok' -o -name '.agents' \) -print 2>/dev/null \
-  | sed 's|/\.[a-z-]*$||' | sort -u
+  \( -type d \( -name '.claude' -o -name '.codex' -o -name '.cursor' -o -name '.grok' -o -name '.agents' \) -print \) -o \
+  \( -type f \( -name 'AGENTS.md' -o -name 'CLAUDE.md' \) -print \) 2>/dev/null \
+  | sed -e 's|/\.[a-z-]*$||' -e 's|/[A-Z]*\.md$||' | sort -u
 ```
+
+The second clause matters: a project whose only configuration is a root `AGENTS.md` or `CLAUDE.md` has no config *directory* to match on, and searching for directories alone silently skips it. Rules files are the first row of every tool's project inventory, so a scan that cannot see them misses real projects.
 
 Each exclusion earns its place:
 
@@ -68,6 +71,10 @@ Each exclusion earns its place:
 **Do not use "is a git repository" as the test.** On the machine this rule was measured against, 25 git repositories matched and 13 of them were plugin marketplace clones — marketplaces are themselves git repos. Report git status, never decide with it.
 
 **Depth is capped at 5.** That covers every real project on a normal layout and keeps the scan under a tenth of a second. Say so in the report, so a user with deeper nesting knows why something is missing and can pass that project root explicitly.
+
+**Discard results that are not projects.** The exclusions above remove tool data, but a match can still land somewhere that is obviously not a repository — a `~/Documents/.claude/settings.local.json` makes the whole Documents folder look like a project. Drop a hit when it is a standard home folder (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Movies`, `Public`) rather than something inside one. Name every discarded hit in the report so the decision is visible; if the user actually keeps a project at that path, they can pass it explicitly.
+
+**Skip projects with nothing to migrate.** A discovered project whose source-tool surfaces are all empty gets no `.migrate/` directory and no ledger — creating them would leave an untracked directory in a repository for no reason. Count it in the scan summary as found-but-empty and move on.
 
 **Rules for the results:**
 
@@ -83,6 +90,8 @@ Each exclusion earns its place:
 - When the target does not read it (Claude Code, Codex CLI), migrate it like any other skill directory.
 
 The same reasoning applies to any other path a target reads natively — check the target doc's compatibility notes before copying.
+
+**`.agents/skills/` belongs to the project, not to any one tool.** It is a shared surface, so migrate it regardless of which tool you were told the source is — the question is only whether the *target* already reads it. Do not skip it because the source tool's inventory does not list the path; no tool's inventory claims it, and treating that as "not my configuration" would strand every skill living there.
 
 **Never delete the source copy after migrating it.** When you copy a skill out of `.agents/skills/` into a target that does not read that path, the original stays where it is — removing it would break the tools that were reading it. That does leave the same skill visible twice to any tool reading both paths, so say so in the report: name the skill, both locations, and which tools see the duplicate. The user decides whether to prune.
 
@@ -138,6 +147,14 @@ Every target doc instructs you to write a `## Migrated from <source> (<date>)` s
 - Give every source rule file its own **`### <filename>` subheading. Add it even when there is only one file** — a format that changes with the file count makes rules untraceable and produces different output run to run.
 - Order files the way the source tool actually loads them (alphabetical by filename when the source doc does not say).
 - If the source body contains higher-level headings (`# ...`), **leave the body verbatim and do not adjust heading levels.** Inverted heading levels are acceptable; preserving the original takes priority.
+
+**Check that the target file is not the source file before writing.** People symlink one rules file to another so several tools share it — `CLAUDE.md -> AGENTS.md` in the same directory is a common arrangement, and project scope makes it likely because source and target live in one root. Appending to a symlink writes through to its destination, so a migration that does not check would copy the source into itself and keep growing on every run.
+
+Before merging, resolve both paths (`readlink -f`, or compare inode and size) and compare:
+
+- **Same file** — write nothing. Report it as already shared: one file already serves both tools, which is the outcome the migration was trying to produce.
+- **Target is a symlink somewhere else** — say where in the report before writing, because the edit lands outside the path you were given.
+- **Different files** — merge normally.
 
 ## Step 5: Report
 
