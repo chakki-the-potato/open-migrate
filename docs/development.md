@@ -40,6 +40,11 @@ changed. `./scripts/check-version-bump.sh` enforces this in CI.
 
 This has silently invalidated end-to-end runs more than once.
 
+The version lives in two manifests — `.claude-plugin/plugin.json` for the plugin and
+`package.json` for npm. They are one version on two release surfaces, so move both; the same
+script fails when they disagree. The full rule, including which paths count as shipped, is in
+[CONTRIBUTING.md](../CONTRIBUTING.md#2-bump-the-version-when-shipped-content-changes).
+
 ## Do not keep the plugin enabled while developing
 
 With both installed there are two skills of the same name — the fresh one from `./install.sh` and
