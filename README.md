@@ -97,10 +97,18 @@ Installation and skill loading were checked on a real machine, not just in tests
 
 | Tool | Install | Skill loads | Invoke as |
 |---|---|---|---|
-| Claude Code | plugin | verified — a live session lists `open-migrate` | `/open-migrate` |
-| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/open-migrate` |
+| Claude Code | plugin | verified — a live session lists it | `/open-migrate:open-migrate` |
+| Claude Code | `./install.sh claude` | verified | `/open-migrate` |
+| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/open-migrate:open-migrate` |
 | Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `open-migrate` | `/open-migrate` |
 | Grok Build | `./install.sh grok` | verified — `grok inspect` lists it | `/open-migrate` |
+
+**A plugin install answers to `/<plugin>:<skill>`, never to the bare name.** Both are
+`open-migrate` here, so the command is `/open-migrate:open-migrate` — that is the namespace, not
+a typo. If you want the short `/open-migrate`, install it as a personal skill with
+`./install.sh claude` instead and keep the plugin disabled; you then update with
+`git pull && ./install.sh claude` rather than `claude plugin update`. Do not run both: two skills
+of the same name in one home, and which one loads is not predictable.
 
 Grok Build has a built-in `/migrate`, which is part of why this command is named `/open-migrate` — the names no longer collide, so it stays unqualified everywhere.
 
@@ -125,6 +133,9 @@ settings first, then clean up.
 /open-migrate codex claude     source first, then destination
 /open-migrate rollback         list runs and undo one
 ```
+
+Installed as a plugin the command is `/open-migrate:open-migrate` — same arguments, namespaced
+name. The short form below is written unqualified for readability.
 
 Both tools are inputs, so the direction is never in doubt — and you can migrate **into a tool you have not installed yet.** Running inside Claude, you can prepare a `~/.grok` before you switch to Grok, which is usually the order people actually do it in.
 
@@ -296,7 +307,7 @@ To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc
 
 ## Known limitations
 
-- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/open-migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified at 61/61 in both directions.
+- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/open-migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified by the direction suite in both directions.
 - The knowledge docs reflect each tool's config surface as of August 2026. If a tool changes its format, the corresponding doc needs updating.
 - The similarly named community CLI `superagent-ai/grok-cli` stores its configuration somewhere else entirely (`~/.grok/user-settings.json`). This tool targets xAI's official **Grok Build** only and distinguishes the two during detection.
 
