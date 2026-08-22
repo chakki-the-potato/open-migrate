@@ -207,6 +207,11 @@ What makes that affordable: there are **no per-direction converters**. Each tool
 knowledge doc — how to read it, how to write into it — and a direction is just one doc paired
 with another. Four fixtures and four verifiers cover all twelve.
 
+Those runs are frozen in the repository, each one pinned to the sha256 of the docs that produced
+it. The migration is performed by an agent reading those docs, so CI cannot re-run it — but it can
+refuse to build when a doc moves ahead of its output. **Editing a tool doc fails the build until
+the affected directions are re-measured and re-frozen.**
+
 Fixtures only prove so much, so it was also run against a real `~/.codex` holding 353 permission
 rules. The current guard converts 104 of them and reproduces the other 249 verbatim in the report.
 The version before that guard emitted 334 entries from the same source — 43 of them over 200

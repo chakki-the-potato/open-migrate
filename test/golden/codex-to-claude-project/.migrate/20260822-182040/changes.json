@@ -1,0 +1,24 @@
+{
+  "run": "20260822-182040",
+  "root": "<TARGET>",
+  "modified": [
+    "CLAUDE.md"
+  ],
+  "created": [
+    ".claude/settings.json",
+    ".claude/skills/proj-hello/SKILL.md",
+    ".claude/skills/shared-skill/SKILL.md"
+  ],
+  "created_dirs": [
+    ".claude",
+    ".claude/skills",
+    ".claude/skills/proj-hello",
+    ".claude/skills/shared-skill"
+  ],
+  "after": {
+    "CLAUDE.md": "2d1c12e4ce773fc8e7cfda4086f559819293c90f62f700d7b94baa271e7ff2b8",
+    ".claude/settings.json": "107026147c6f95e1a83428031e10e4f9dd79876ed280cb6fcfec1c32c379b613",
+    ".claude/skills/proj-hello/SKILL.md": "23818a111fd5d727ef3c00a9ccad601f2f3adae34297172ea27a218e48e7c738",
+    ".claude/skills/shared-skill/SKILL.md": "76f09aa9517610f4a49cd4da456db55c69577177b86968d2cffe6ca1acbca669"
+  }
+}

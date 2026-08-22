@@ -1,0 +1,26 @@
+{
+  "run": "20260822-181726",
+  "root": "<TARGET>",
+  "modified": [
+    "cli-config.json",
+    "hooks.json"
+  ],
+  "created": [
+    "skills/hello/SKILL.md",
+    "skills/hello/reference/tone.md",
+    "agents/reviewer.md"
+  ],
+  "created_dirs": [
+    "skills",
+    "skills/hello",
+    "skills/hello/reference",
+    "agents"
+  ],
+  "after": {
+    "cli-config.json": "5c0c46dba738f17e3368ff2c303b88ce278b940f4ac763f7e2e77298461800d8",
+    "hooks.json": "8809df03207f29ae2607c4bd02b7e8840be8976711b76326b891116dce1704b4",
+    "skills/hello/SKILL.md": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "skills/hello/reference/tone.md": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "agents/reviewer.md": "6d836a120c57e516ff1ee5daef83d9e424f04025470778672bea40a23d649d36"
+  }
+}

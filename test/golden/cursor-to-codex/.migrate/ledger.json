@@ -1,0 +1,26 @@
+{
+  "<REPO>/test/fixtures/cursor-home/AGENTS.md": {
+    "sha256": "6b74fc3dc9a1ceb94637e973eb5ec6dc27b94af3ed0d2e17f44dcf9e19535482",
+    "run": "20260822-181501"
+  },
+  "<REPO>/test/fixtures/cursor-home/cli-config.json": {
+    "sha256": "6c656e7f56cd4d1c16c216b582ca4431d04f105c54ea178f45e56aa3df7ccbce",
+    "run": "20260822-181501"
+  },
+  "<REPO>/test/fixtures/cursor-home/hooks.json": {
+    "sha256": "a7368eb481fa45ea87e6aaec37681b3fda591bd8f9aabce78bf199d22567c5da",
+    "run": "20260822-181501"
+  },
+  "<REPO>/test/fixtures/cursor-home/agents/reviewer.md": {
+    "sha256": "f8c12a254bf5d3d628a4f4ca47995d1f8ae9708d0638f9fc6ed527ac0bac66ed",
+    "run": "20260822-181501"
+  },
+  "<REPO>/test/fixtures/cursor-home/skills/hello/SKILL.md": {
+    "sha256": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "run": "20260822-181501"
+  },
+  "<REPO>/test/fixtures/cursor-home/skills/hello/reference/tone.md": {
+    "sha256": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "run": "20260822-181501"
+  }
+}

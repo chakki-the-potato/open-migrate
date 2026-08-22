@@ -104,10 +104,15 @@ Pinning is per direction on purpose. Editing `core/tools/cursor.md` marks the si
 directions stale and leaves the other six alone; a blunt all-or-nothing gate is the kind people
 stop honoring.
 
-Two properties the gate does not have, stated so nobody assumes otherwise. It cannot tell a
-*correct* regeneration from a careless one — it proves the golden was produced by the current
-docs, not that whoever produced it was paying attention. And it says nothing about directions
-absent from the manifest.
+**All twelve directions and project scope are frozen**, so a doc edit cannot reach `main` without
+the affected outputs being re-measured. When a direction is missing the gate says so by name on
+every build — a partially frozen manifest otherwise reads as full coverage, which is the exact
+failure this whole thing exists to prevent. The expected set is derived from `core/tools/`, so
+adding a fifth tool widens the reported gap rather than hiding inside it.
+
+One property the gate does not have, stated so nobody assumes otherwise: it cannot tell a
+*correct* regeneration from a careless one. It proves the golden was produced by the current
+docs, not that whoever produced it was paying attention.
 
 ### Regenerating one
 

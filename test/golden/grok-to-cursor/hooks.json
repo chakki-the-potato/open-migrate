@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "echo existing-session",
+        "type": "command"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "echo pre-edit-check",
+        "type": "command",
+        "timeout": 10,
+        "matcher": "Write"
+      }
+    ]
+  }
+}

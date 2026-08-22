@@ -1,0 +1,22 @@
+{
+  "<TARGET>/AGENTS.md": {
+    "sha256": "9567518481e7d3568b005ad0ae713537bbd1f1d4b40263a505944f82ce118ff1",
+    "run": "20260822-182040"
+  },
+  "<TARGET>/.codex/config.toml": {
+    "sha256": "510a18a450f39cda529b11b492916d01cbdfd3a07b9c9c0296d76c0c1d56cfd4",
+    "run": "20260822-182040"
+  },
+  "<TARGET>/.codex/hooks.json": {
+    "sha256": "0354925d132eb8da02b3f19a2d1ab5655ac6704086c24b9bae031c67ffe5215e",
+    "run": "20260822-182040"
+  },
+  "<TARGET>/.codex/skills/proj-hello/SKILL.md": {
+    "sha256": "23818a111fd5d727ef3c00a9ccad601f2f3adae34297172ea27a218e48e7c738",
+    "run": "20260822-182040"
+  },
+  "<TARGET>/.agents/skills/shared-skill/SKILL.md": {
+    "sha256": "76f09aa9517610f4a49cd4da456db55c69577177b86968d2cffe6ca1acbca669",
+    "run": "20260822-182040"
+  }
+}

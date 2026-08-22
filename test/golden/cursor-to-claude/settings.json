@@ -1,0 +1,40 @@
+{
+  "model": "claude-fable-5",
+  "env": {
+    "EXISTING_KEY": "keep"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(git status:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:*)"
+    ],
+    "deny": [
+      "Bash(rm:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo existing-pre"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo pre-edit-check",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
