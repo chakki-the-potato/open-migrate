@@ -181,7 +181,13 @@ Process only approved categories, in this order.
   "root": "<absolute target root>",
   "modified": ["settings.json", "CLAUDE.md"],
   "created": ["skills/hello/SKILL.md", "agents/reviewer.md"],
-  "created_dirs": ["skills/hello", "agents"]
+  "created_dirs": ["skills/hello", "agents"],
+  "after": {
+    "settings.json": "<sha256 of the file as this run left it>",
+    "CLAUDE.md": "<sha256>",
+    "skills/hello/SKILL.md": "<sha256>",
+    "agents/reviewer.md": "<sha256>"
+  }
 }
 ```
 
@@ -194,6 +200,11 @@ Process only approved categories, in this order.
      lost track of which it was, and the honest fix is to record it as `modified`.
    - `created_dirs` lists directories that did not exist before this run, innermost last, so
      rollback can remove them in reverse order once their files are gone.
+   - `after` holds the sha256 of every file in `modified` and `created`, **as this run left
+     it**. This is what lets a later rollback tell "nobody has touched it since" from "the
+     user edited it after migrating". The backup cannot answer that: it is the state from
+     *before* the run, so a migrated file always differs from it and every path would look
+     edited. Hash each file immediately after you finish writing it.
    - Write the file even when nothing changed. An empty `modified` and `created` is the
      record that the run was a no-op, and rollback on it correctly does nothing.
 

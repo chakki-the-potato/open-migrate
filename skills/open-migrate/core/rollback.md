@@ -47,8 +47,16 @@ the user can restore those files by hand, and stop.
 
 ## 2. Check that nothing moved underneath you
 
-For each path in `modified`, compare the file on disk against the corresponding file in
-`backup/`. For each path in `created`, check the file still exists.
+For each path in `modified` and `created`, hash the file on disk and compare it against that
+path's entry in `after`. That entry is what the run left behind, so a mismatch means somebody
+changed the file afterwards.
+
+**Do not compare against `backup/` for this.** The backup is the state from before the run, so
+a migrated file always differs from it — every path would look edited and the question would
+never get a useful answer. The backup is what you restore *from*, not what you compare against.
+
+If `after` is missing (a run predating it), you cannot tell edited from untouched. Say so, and
+treat every path as "changed since the run" — ask about each one rather than assuming.
 
 Three outcomes, and they are decided by the user, not by you:
 
