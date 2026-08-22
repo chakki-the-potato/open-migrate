@@ -134,6 +134,15 @@ holding `core/procedure.md` at 73b5084, one commit behind e8765be, which replace
 rationale — while each `SKILL.md` still matched the repository. An installed tree can look
 current at the surface the tool reads first and be stale underneath.
 
+Worse than stale is stale *and* live, which is what Codex was doing here: the model was handed two
+`open-migrate` entries at once, the current install beside a plugin pinned at 0.3.3 whose
+description still advertised the MCP migration dropped in 634258dc. Neither overwrote the other,
+and which one a run would follow is not decidable from outside. Removing the plugin left one entry
+— but the marketplace snapshot was still pinned to that revision, so the next `plugin add` would
+have brought it straight back. `codex plugin marketplace upgrade` is the part that actually ends
+it. README says not to install both ways in one tool; this is what ignoring that looks like from
+the model's side.
+
 `freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
 "already migrated" — a ledger no-op would freeze an empty diff as the expected output and every
 content check would pass against a target that never changed. Absolute paths in the run artifacts
@@ -153,5 +162,15 @@ are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machi
   whether `core/*.md` resolves when the skill is actually invoked is untouched by this. Every
   direction in the table above was driven from another tool, and the conversion itself remains
   verified in both directions.
-- **Codex CLI's full round trip is unverified.** `plugin list` reports it installed and enabled;
-  nothing beyond that was checked.
+- **Codex CLI hands the skill to the model; no migration has been driven from inside it.**
+  `codex debug prompt-input` renders what Codex actually gives the model, and `open-migrate`
+  appears there with the description from the installed `SKILL.md`. That is stronger than the
+  `plugin list` check it replaces — being installed is not the same as being handed over — and
+  still short of execution. A model call was attempted and did not run: the account rejected every
+  model tried, so that failure says nothing either way about the skill.
+
+  Read the description in that dump with care, because Codex shortens it. The field is 275
+  characters and 124 of them arrived, cut mid-word. Codex warns about a "2% skills context budget"
+  when the list is long enough — it did while a duplicate plugin was installed and did not after —
+  so a short description there is a property of the tool, warning or no warning, and not a symptom
+  of anything.
