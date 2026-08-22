@@ -160,8 +160,18 @@ anything, it has copied, and having read `core/` from the repository does not ma
 
 Observed, not imagined. A Codex → Claude run driven from a Grok session against a seeded target
 announced it mid-run: *"There's a Codex→Claude golden. I'll read it so the conversion, ledger, and
-report match the documented expected result."* Regenerate from a checkout without `test/golden/`
-present, or from a worktree with that path removed, and say in the PR which you did.
+report match the documented expected result."*
+
+`./scripts/blind-worktree.sh <path>` makes the answer absent rather than forbidden. It creates a
+worktree holding `core/`, `scripts/`, and `test/fixtures/` with `test/golden/` never written to
+disk, asserts that afterwards rather than assuming the sparse pattern took, and refuses when
+`core/` differs between `HEAD` and your working tree — otherwise the run reads one revision of the
+docs while `freeze-golden.sh` pins another, which is the mislabelled golden arriving by a different
+route. Run the migration there and freeze from your normal checkout.
+
+**It is not containment.** An agent that leaves the worktree can still read the golden through the
+main checkout, and nothing detects that. What it removes is the case that actually happened: the
+answer lying in the working directory of the run.
 
 `freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
 "already migrated" — a ledger no-op would freeze an empty diff as the expected output and every
