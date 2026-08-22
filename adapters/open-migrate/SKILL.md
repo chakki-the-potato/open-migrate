@@ -1,6 +1,6 @@
 ---
 name: open-migrate
-description: Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build) — rules, MCP servers, skills, subagents, hooks, permissions. Use when the user asks to move or import settings from one AI coding tool to another.
+description: Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build) — rules, skills, subagents, hooks, permissions. Use when the user asks to move or import settings from one AI coding tool to another.
 user-invocable: true
 ---
 
@@ -56,7 +56,7 @@ Ask what to migrate when the user has not said:
 2. `core/procedure.md` — the execution procedure
 3. `core/tools/<source>.md` — how to read and convert the source
 4. `core/tools/<destination>.md` — how to write to the destination
-5. If any of those delegates a rule to another tool's doc (for example "apply codex.md's MCP conversion rules directly"), **read that doc too.** Skipping the delegation leaves you with half the rules.
+5. If any of those delegates a rule to another tool's doc (for example "apply codex.md's permission conversion rules directly"), **read that doc too.** Skipping the delegation leaves you with half the rules.
 
 ## 2. Execute
 

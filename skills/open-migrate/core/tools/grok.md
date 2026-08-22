@@ -4,7 +4,7 @@ Home: `~/.grok` (relocatable via the `GROK_HOME` environment variable). The main
 
 This doc covers xAI's official **Grok Build** (`grok`). The similarly named community CLI (`superagent-ai/grok-cli`, npm `grok-dev`) stores its configuration somewhere else entirely (`mcp.servers` and `hooks` inside `~/.grok/user-settings.json`) — **do not apply this doc to that tool.** If the home has `user-settings.json` but no `config.toml`, it is not Grok Build: stop and tell the user.
 
-Grok Build looks like a union of the other tools — **hooks and permissions have Claude's shape**, while **MCP and env injection have Codex's shape**. That is why most conversion rules here amount to "carry it over unchanged".
+Grok Build looks like a union of the other tools — **hooks and permissions have Claude's shape**, while **env injection has Codex's shape**. That is why most conversion rules here amount to "carry it over unchanged".
 
 ## Detection
 
@@ -15,7 +15,6 @@ Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, 
 | Category | Location | Format |
 |---|---|---|
 | Global rules | every `~/.grok/rules/*.md` (any filename, loaded alphabetically) plus `~/.grok/AGENTS.md` | Plain markdown. The named files recognized in the home are `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CLAUDE.local.md`, and similar — **`GROK.md` is not read** |
-| MCP | `[mcp_servers.<name>]` in `~/.grok/config.toml` | TOML, same shape as Codex: stdio uses `command`/`args` plus the sub-table `[mcp_servers.<name>.env]`; remote uses `url` plus `[mcp_servers.<name>.http_headers]`. `enabled = false` marks it disabled |
 | Skills | `~/.grok/skills/<name>/SKILL.md` | agent-skills standard layout including supporting files. Frontmatter `user-invocable: true` exposes the skill as a slash command |
 | Commands / prompts | **No surface** | There is no dedicated command directory — slash commands are built as skills |
 | Subagents | `~/.grok/agents/<name>.md` | YAML frontmatter (**camelCase**) plus the body (system prompt). Required: `name`, `description`. Full set of optional fields: `model`, `tools`, `color`, `promptMode` (`extend`\|`full`), `capabilityMode`, `permissionMode`, `disallowedTools`, `effort`, `maxTurns`, `isolation`, `background`, `skills`, `discoverSkills`, `inheritSkills`, `agentsMd`, `injectDefaultTools`, `initialPrompt`, `mcpServers`. **This row is the single list of Grok's fields** — other sections reference it instead of repeating the list |
@@ -33,11 +32,6 @@ Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, 
 - Read both `rules/*.md` and `AGENTS.md` and merge them verbatim into the target's global rule file (never summarize or rewrite). For the merge section and subheading format, follow procedure.md's "Global-rule merge format". Grok's load order is **alphabetical by filename**.
 - Carry `@path` import lines over verbatim; never expand them.
 - Filenames Grok does not recognize, such as `GROK.md`, are **not migration targets** — if you find one, do not move it; record it in the report as "a file Grok does not read".
-
-### MCP
-- `[mcp_servers.<name>]` → the target's MCP format. The table shape matches Codex, so apply codex.md's MCP conversion rules directly.
-- Do not migrate servers with `enabled = false`; record them in the report.
-- Values in `[mcp_servers.<name>.http_headers]` and `.env` are subject to security.md secret detection.
 
 ### Skills
 - Copy the `SKILL.md` directory including supporting files, unchanged.
@@ -74,7 +68,6 @@ Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, 
 | Category | Write location | How |
 |---|---|---|
 | Global rules | `~/.grok/AGENTS.md` | Append a `## Migrated from <source> (<date>)` section at the end of the file, **verbatim** (never summarize or rewrite). Keep the `@import` lines from both the source and the existing file. Never delete existing content. Copy the original to `.migrate/<run-id>/backup/AGENTS.md` before writing. Do not write into `rules/` — a single file is easier to trace, and since every `rules/*.md` is loaded, the effect is identical wherever you write |
-| MCP | `[mcp_servers.<name>]` in `config.toml` | stdio: `command`/`args` plus `[mcp_servers.<name>.env]`. remote: `url` plus `[mcp_servers.<name>.http_headers]`. Replace secret values with `<REDACTED-REENTER>` and list them under manual action. **If a server with the same name exists, do not overwrite — skip and record in the report** |
 | Skills | `~/.grok/skills/<name>/` | Copy the whole directory including supporting files. **If a skill with the same name exists, skip and record in the report** |
 | Commands / prompts | `~/.grok/skills/<name>/SKILL.md` (migrate as a skill, not a command) | Grok has no command surface. Wrap the source command in `name`/`description` frontmatter and convert it to a skill; add `user-invocable: true` if it should be usable as a slash command. `name` is the source filename without its extension. If the source has no `description`, do not invent one — use the body's first sentence verbatim and record in the report that it was synthesized. Leave the source's `$1`-`$9` / `$ARGUMENTS` substitution tokens exactly as they are |
 | Subagents | `~/.grok/agents/<name>.md` | Write the YAML frontmatter in **camelCase**. `name` and `description` carry over unchanged. Convert snake_case or kebab-case keys from the source to camelCase. Source-only keys with no corresponding field here (Cursor's `readonly`, `is_background`) are dropped and recorded. **Do not drop `color` — Grok has that field too** (see the inventory row above). **If a file with the same name exists, do not overwrite — skip and record in the report** |
@@ -89,7 +82,7 @@ Consider it installed when `~/.grok/config.toml` exists. If `GROK_HOME` is set, 
 
 1. Copy the original to `.migrate/<run-id>/backup/config.toml` before modifying.
 2. **Never parse the whole file and re-serialize it** — that destroys comments and key order. Make minimal edits instead.
-   - **Append new tables** (`[mcp_servers.<name>]` and the like) **at the end of the file.** In TOML every line after a table header belongs to that table, so adding a new header cleanly separates it even when an existing table block (`[permission]`, say) sits at the end of the file.
+   - **Append new tables** (`[shell_environment_policy.set]` and the like) **at the end of the file.** In TOML every line after a table header belongs to that table, so adding a new header cleanly separates it even when an existing table block (`[permission]`, say) sits at the end of the file.
    - To add a **new key** to an existing table, insert the line inside that table's block.
    - To **extend an existing array value** (adding entries to `allow = [...]`), rewrite that single line in place. This is not an exception to "never re-serialize" but a form of minimal editing — an array's line *is* the whole value, so there is nothing else to touch. Preserve the order of existing elements, append after them, and de-duplicate.
 3. Quoting: wrap string values in double quotes. Write booleans and integers unquoted. Quote each array element individually when the elements are strings.
@@ -102,7 +95,7 @@ Read these when Grok is the source in a project migration; write these when it i
 | Category | Location | Notes |
 |---|---|---|
 | Global rules | `AGENTS.md` | The project root's `AGENTS.md`; `rules/*.md` is home-scope only |
-| Settings | `.grok/config.toml` | **The project layer loads less than the home layer** — only MCP servers, plugins, and permission rules. Do not write model, `[ui] permission_mode`, or `[sandbox]` here; Grok ignores them at project level |
+| Settings | `.grok/config.toml` | **The project layer loads less than the home layer** — only plugins and permission rules. Do not write model, `[ui] permission_mode`, or `[sandbox]` here; Grok ignores them at project level |
 | Skills | `.grok/skills/<name>/` | Whole directory |
 | Subagents | `.grok/agents/*.md` | camelCase frontmatter, same as home scope |
 | Hooks | `.grok/hooks/*.json` | Project hooks require `/hooks-trust` or `--trust` before Grok honors them — note this in the report |

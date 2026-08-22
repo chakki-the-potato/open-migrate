@@ -1,6 +1,6 @@
 {
   "model": "claude-fable-5",
-  "env": { "FIXTURE_FLAG": "1" },
+  "env": { "FIXTURE_FLAG": "1", "SERVICE_API_KEY": "sk-test-FAKE-SECRET-123" },
   "permissions": {
     "allow": ["Bash(git status:*)", "Bash(npm run build:*)", "Bash(npm run test:*)"],
     "ask": ["Bash(git push:*)"],

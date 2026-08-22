@@ -4,8 +4,8 @@
 # Already defined by the caller (verify-migration.sh): TARGET, TOOL, SOURCE,
 # script_dir, chk/chk_not, fail. set -uo pipefail is already in effect.
 # The load order is _common.sh -> target-$TOOL.sh -> source-$SOURCE.sh, so a
-# source-<tool>.sh *can* reference variables created by target-<tool>.sh (mcp_json,
-# for example) — but doing so makes that source file safe only when paired with the
+# source-<tool>.sh *can* reference variables created by target-<tool>.sh — but doing
+# so makes that source file safe only when paired with the
 # target file that creates the variable (any other combination dies on a set -u
 # undefined-variable error). Sticking to the variables this file exports, such as
 # mig_dir, keeps a source file safe against every target — prefer that.
@@ -23,9 +23,7 @@
 #   find_run_artifact <path relative to the run dir>
 #                       Helper that resolves the path of a point-in-time artifact
 #                       (backup/CLAUDE.md, for example) while honoring
-#                       is_noop_rerun. Artifacts that accumulate across runs
-#                       (mcp-commands.sh) combine differently and do not use this
-#                       helper — those target files consult is_noop_rerun directly.
+#                       is_noop_rerun.
 
 mig_dir="$(ls -d "$TARGET/.migrate/"*/ 2>/dev/null | sort | tail -1)"
 if [ -z "$mig_dir" ]; then
@@ -33,7 +31,7 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-# Per-run artifacts (backups, MCP commands) are looked up in the newest run by default.
+# Per-run artifacts (backups) are looked up in the newest run by default.
 # Artifacts from an earlier run are accepted only when the newest run legitimately created
 # nothing because the ledger skipped everything (the report records "already migrated").
 # Otherwise a broken newest run could pass by borrowing traces from an older one.
@@ -70,7 +68,7 @@ chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
 chk "ledger records source hashes"     jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | unique | length >= 5' "$TARGET/.migrate/ledger.json"
 
 # Secrets must never leak
-chk_not "no MCP secret leaked"         grep -rqF "FAKE-SECRET-123" "$TARGET"
+chk_not "no config secret leaked"      grep -rqF "FAKE-SECRET-123" "$TARGET"
 chk_not "auth.json never copied"       grep -rqF "AUTH-FAKE-SECRET" "$TARGET"
 
 # ── Which surfaces the source tool actually has ────────────────────────

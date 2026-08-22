@@ -9,10 +9,6 @@ chk "project rule 2 migrated"         grep -qF "Never touch the generated/ direc
 chk "merge heading present"           grep -q "^## Migrated from codex" "$TARGET/CLAUDE.md"
 chk "per-file subheading present"     grep -q "^### AGENTS.md" "$TARGET/CLAUDE.md"
 
-# Project MCP goes to .mcp.json, never to the home-scope CLI.
-chk ".mcp.json valid JSON"            jq -e . "$TARGET/.mcp.json"
-chk "project MCP server migrated"     jq -e '.mcpServers.projsvc.command == "npx"' "$TARGET/.mcp.json"
-chk "project MCP env carried"         jq -e '.mcpServers.projsvc.env.PROJECT_FLAG == "1"' "$TARGET/.mcp.json"
 
 # Project hooks go into .claude/settings.json, converted from the Codex matcher.
 chk "project settings valid JSON"     jq -e . "$TARGET/.claude/settings.json"

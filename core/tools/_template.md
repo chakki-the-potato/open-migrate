@@ -11,7 +11,6 @@ Home: `<config root path>`. Use this doc both when reading the tool as a source 
 | Category | Location | Format |
 |---|---|---|
 | Global rules | | |
-| MCP | | |
 | Skills | | |
 | Hooks | | |
 | Permission rules | | |

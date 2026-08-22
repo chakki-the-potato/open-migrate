@@ -1,6 +1,6 @@
 # open-migrate
 
-Move your settings in one step when you switch AI coding tools. It reads rules, MCP servers, skills, subagents, hooks, and permissions from the source tool and converts them into the destination tool's format.
+Move your settings in one step when you switch AI coding tools. It reads rules, skills, subagents, hooks, permissions, and environment variables from the source tool and converts them into the destination tool's format.
 
 Four tools are supported — **Claude Code, Codex CLI, Cursor, and Grok Build** — for 12 possible directions.
 
@@ -116,7 +116,7 @@ Natural language works as well: "move my codex settings into claude" carries the
 
 A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
-Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `.mcp.json`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
+Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `config.toml`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
 
 ### Project configuration
 
@@ -159,22 +159,22 @@ Each direction was scored by a deterministic verifier after actually migrating a
 
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
-| **Claude** | — | 54 | 57 | 61 |
-| **Codex** | 71 | — | 65 | 69 |
-| **Cursor** | 59 | 50 | — | 55 |
-| **Grok** | 61 | 52 | 58 | — |
+| **Claude** | — | 48 | 47 | 55 |
+| **Codex** | 59 | — | 55 | 63 |
+| **Cursor** | 47 | 44 | — | 49 |
+| **Grok** | 49 | 46 | 48 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
 
-The three Codex-source directions run seven checks more than the others. The Codex fixture's
-rules file carries three argv-prefix rules that cannot become target permissions — one holding
-a quote and parentheses, one holding whitespace, one whose joined form runs past 200
-characters — and those checks assert that each is kept out of the target's permission list and
-named verbatim in the report instead.
+The Codex-source directions run extra checks the others do not. The Codex fixture's rules file
+carries three argv-prefix rules that cannot become target permissions — one holding a quote and
+parentheses, one holding whitespace, one whose joined form runs past 200 characters — and those
+checks assert that each is kept out of the target's permission list and named verbatim in the
+report instead.
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
-Project scope is verified separately at 30 checks, and an empty target still fails 24 of them, so the verifier is not passing everything by default.
+Project scope is verified separately at 26 checks, and an empty target still fails 20 of them, so the verifier is not passing everything by default.
 
 To run it yourself:
 
@@ -184,9 +184,11 @@ To run it yourself:
 
 ## What is not migrated
 
-**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an MCP header, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
+**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an injected environment variable, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
 
 Also not migrated:
+
+- **MCP servers** — deliberately out of scope. Registering a server changes what the destination tool can reach on your machine, and a server definition routinely carries an API key. The report counts every server it finds and names each one with its source location so you can move them yourself.
 
 - **Model settings** — model names differ per tool. The current value is quoted in the report as guidance only.
 - **Approval policy and sandbox** — a corresponding concept exists but its meaning differs, so nothing is applied automatically. You get a suggestion.
@@ -198,7 +200,7 @@ Also not migrated:
 Permission models differ in expressiveness, so approximation is unavoidable.
 
 - Cursor has no `ask` tier. Another tool's ask rules go into neither allow nor deny (both distort the original meaning) — they are handed off as manual actions.
-- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP rules. Those are passed through verbatim instead of converted.
+- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP-tool rules. Those are passed through verbatim instead of converted.
 - Cursor has no global env injection surface. The key names and their source locations are recorded so you can move them yourself.
 - Some hook tool matchers merge many-to-one (Claude `Edit` and `Write` → Cursor `Write`). The reverse has no unique restoration, so it is restored as `Edit|Write`.
 
@@ -209,7 +211,7 @@ All of these land in the report's "Approximated" or "Manual action required" sec
 - **No writes before approval.** Nothing is touched until you approve the plan table in the Confirm step.
 - **Merge, never overwrite.** Existing settings are not deleted. Originals are copied to `.migrate/<run-id>/backup/` before modification, and if parsing fails after a write, the backup is restored and the run stops.
 - **Safe to re-run.** `.migrate/ledger.json` records the sha256 of every migrated source file, so running the same migration again does not merge anything twice.
-- **Name collisions are skipped.** If the target already has a skill, subagent, or MCP server with the same name, it is left alone and recorded in the report.
+- **Name collisions are skipped.** If the target already has a skill or subagent with the same name, it is left alone and recorded in the report.
 
 ## Development
 

@@ -2,7 +2,7 @@
 # Uses TARGET, mig_dir, is_noop_rerun, find_run_artifact, script_dir, and chk/chk_not
 # exactly as _common.sh exports them.
 #
-# Every Cursor config file is plain JSON (mcp.json, hooks.json, cli-config.json), so no TOML
+# Every Cursor config file is plain JSON (hooks.json, cli-config.json), so no TOML
 # conversion is needed as it is for Codex — jq validates the file paths directly.
 
 cursor_glob_exists() {
@@ -19,15 +19,6 @@ chk_not "no invented rules/*.md at home root" cursor_glob_exists "$TARGET/rules/
 chk "report carries rule text for manual entry (rule 1)" grep -qF "Answer in Korean." "${mig_dir}migration-report.md"
 chk "report carries rule text for manual entry (rule 2)" grep -qF "Never commit secrets." "${mig_dir}migration-report.md"
 
-# MCP — mcp.json (parses + existing server preserved + new server values + secret redaction)
-chk "mcp.json valid JSON"              jq -e . "$TARGET/mcp.json"
-chk "existing MCP server preserved"    jq -e '.mcpServers.otherserver.command == "otherbin"' "$TARGET/mcp.json"
-chk "mcp everything command"           jq -e '.mcpServers.everything.command == "npx"' "$TARGET/mcp.json"
-chk "mcp everything arg: -y"           jq -e '.mcpServers.everything.args | index("-y") != null' "$TARGET/mcp.json"
-chk "mcp everything arg: package"      jq -e '.mcpServers.everything.args | index("@modelcontextprotocol/server-everything") != null' "$TARGET/mcp.json"
-chk "mcp everything env"               jq -e '.mcpServers.everything.env.LOG_LEVEL == "info"' "$TARGET/mcp.json"
-chk "mcp secretsvc url"                jq -e '.mcpServers.secretsvc.url == "https://example.com/mcp"' "$TARGET/mcp.json"
-chk "mcp secretsvc header redacted"    jq -e '.mcpServers.secretsvc.headers."X-API-Key" == "<REDACTED-REENTER>"' "$TARGET/mcp.json"
 
 # Skills (same agent-skills standard as Claude and Codex — copied unchanged)
 chk "skill copied"                     test -f "$TARGET/skills/hello/SKILL.md"
@@ -76,17 +67,13 @@ chk_not "rm not also allowed"          jq -e '.permissions.allow | index("Shell(
 chk "approvalMode unchanged"           sh -c 'cur=$(jq -r ".approvalMode // \"__none__\"" "$1" 2>/dev/null || echo __none__); bak=$(jq -r ".approvalMode // \"__none__\"" "$2" 2>/dev/null || echo __none__); [ "$cur" = "$bak" ]' _ "$TARGET/cli-config.json" "$(find_run_artifact backup/cli-config.json)"
 
 # Backups — the JSON config merge rule ("copy the original to backup/<filename> before
-# modifying") covers all three files (mcp.json, hooks.json, cli-config.json); each original
+# modifying") covers both files (hooks.json, cli-config.json); each original
 # must be preserved.
-cursor_backup_mcp="$(find_run_artifact backup/mcp.json)"
 cursor_backup_hooks="$(find_run_artifact backup/hooks.json)"
 cursor_backup_cli="$(find_run_artifact backup/cli-config.json)"
-: "${cursor_backup_mcp:=$TARGET/.migrate/__missing__/backup/mcp.json}"
 : "${cursor_backup_hooks:=$TARGET/.migrate/__missing__/backup/hooks.json}"
 : "${cursor_backup_cli:=$TARGET/.migrate/__missing__/backup/cli-config.json}"
 
-chk "backup of pre-existing mcp.json"        test -f "$cursor_backup_mcp"
-chk "backup mcp.json is the original"        jq -e '.mcpServers | has("otherserver") and (has("everything") | not)' "$cursor_backup_mcp"
 chk "backup of pre-existing hooks.json"      test -f "$cursor_backup_hooks"
 chk "backup hooks.json is the original"      jq -e '(.hooks.preToolUse == null) and (.hooks.sessionStart | length) == 1' "$cursor_backup_hooks"
 chk "backup of pre-existing cli-config.json" test -f "$cursor_backup_cli"

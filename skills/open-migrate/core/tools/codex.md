@@ -11,7 +11,6 @@ Consider it installed when `~/.codex/config.toml` or `~/.codex/AGENTS.md` exists
 | Category | Location | Format |
 |---|---|---|
 | Global rules | If `AGENTS.override.md` exists, read **only that** and ignore `AGENTS.md` entirely. Read `AGENTS.md` only when the override is absent | Markdown with `@path` import support. Never migrate, merge, or even quote the contents of an ignored `AGENTS.md` in the report |
-| MCP | `[mcp_servers.<name>]` in `config.toml` | TOML. stdio uses command/args/env. HTTP is identified by the presence of a `url` key (plus optional http_headers / bearer_token_env_var). `enabled=false` means disabled |
 | Skills | `skills/<name>/SKILL.md` | agent-skills standard; copy as-is. Exclude everything under `skills/.system/` (tool built-ins). Vendor distributions (shipped with LICENSE/NOTICE) and plugin-provided skills are not owned by the user — flag them separately in the report and let the user decide whether to migrate them |
 | Custom prompts | `prompts/*.md` (deprecated) | Plain markdown with `$1`-`$9` / `$ARGUMENTS` substitution |
 | Hooks | `hooks.json` (primary) or inline `[[hooks.Event]]` in `config.toml` | Same JSON structure as Claude. Note: `[hooks.state]` in `config.toml` is a trust-hash cache, not a hook definition — it is not migratable and the target regenerates it |
@@ -68,17 +67,11 @@ description: <the description value>
 <the developer_instructions value>
 ```
 
-### MCP (TOML → target format)
-- stdio: carry command/args/env over unchanged. HTTP: url plus headers.
-- `http_headers` values are subject to security.md secret detection.
-- Do not migrate servers with `enabled=false`; record them in the report.
-
 ## Write rules (when Codex is the target)
 
 | Category | Write location | How |
 |---|---|---|
 | Global rules | `AGENTS.md` | Append a `## Migrated from <source> (<date>)` section at the end of the file, **verbatim** (never summarize or rewrite). Keep the `@import` lines from both the source and the existing file. Never delete existing content. Copy the original to `.migrate/<run-id>/backup/AGENTS.md` before writing. **Caution: if the target has an `AGENTS.override.md`, `AGENTS.md` is ignored** — when it exists, stop the merge and ask the user which file to write |
-| MCP | `[mcp_servers.<name>]` in `config.toml` | stdio: `command`/`args`/`env` (sub-table `[mcp_servers.<name>.env]`). HTTP: `url` plus `[mcp_servers.<name>.http_headers]` when needed. API-key style headers that are not `Bearer` auth go in `http_headers`, not `bearer_token_env_var`. Replace secret values with `<REDACTED-REENTER>` and list them under manual action. **If a server with the same name exists, do not overwrite — skip and record in the report** |
 | Skills | `skills/<name>/` | Copy the whole directory including supporting files. If a skill with the same name exists, skip it and record it in the report |
 | Commands / prompts | `prompts/<name>.md` | Plain markdown, unchanged. Keep `$1`-`$9` / `$ARGUMENTS` substitution tokens verbatim. Codex treats this surface as deprecated and recommends skills, so migrate it but add a "consider moving this to a skill" note in the report |
 | Subagents | `agents/<name>.toml` | The source filename (or the frontmatter `name`) becomes the **filename** — do not write a `name` key inside the TOML. `description = "<source description>"`, `developer_instructions = '''<source body>'''` |
@@ -111,7 +104,7 @@ Read these when Codex is the source in a project migration; write these when it 
 | Category | Location | Notes |
 |---|---|---|
 | Global rules | `AGENTS.md` | `AGENTS.override.md` takes precedence here exactly as in home scope |
-| Settings | `.codex/config.toml` | Only some sections load at project level. Migrate MCP servers and permission rules; leave model, approval policy, and sandbox to home scope |
+| Settings | `.codex/config.toml` | Only some sections load at project level. Migrate permission rules; leave model, approval policy, and sandbox to home scope |
 | Hooks | `.codex/hooks.json` | Same `{"hooks": {...}}` structure as home scope |
 | Skills | `.codex/skills/<name>/` | Whole directory |
 | Permission rules | `[permission]` inside `.codex/config.toml` | **Not `rules/*.rules`.** The Starlark rules DSL is a home-scope surface; at project level the rules live inside `config.toml`. Convert accordingly rather than looking for a `.codex/rules/` directory |

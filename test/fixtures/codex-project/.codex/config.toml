@@ -1,6 +1,3 @@
-[mcp_servers.projsvc]
-command = "npx"
-args = ["-y", "project-only-server"]
-
-[mcp_servers.projsvc.env]
-PROJECT_FLAG = "1"
+[permission]
+allow = ["Bash(pnpm build:*)"]
+deny = ["Bash(curl:*)"]

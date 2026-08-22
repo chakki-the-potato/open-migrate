@@ -2,11 +2,10 @@
 # in migration-report.md when Codex was the source of a *project-scope* migration.
 #
 # Deliberately much smaller than source-codex.sh. The home fixture carries a model
-# name, a disabled MCP server, a secret header, keybindings, and an approval policy;
+# name, keybindings, and an approval policy;
 # a project's .codex/ layer holds none of those, so asserting them here would fail
 # for a correct migration.
 
-chk "report: project MCP server named"  grep -qF "projsvc" "${mig_dir}migration-report.md"
 
 # Codex ignores a project's .codex/ layer unless ~/.codex/config.toml trusts the path
 # (core/tools/codex.md, "Trust gate"). That matters in the other direction — when

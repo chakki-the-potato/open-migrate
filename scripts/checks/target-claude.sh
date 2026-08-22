@@ -58,39 +58,7 @@ chk "agent frontmatter name"           grep -q "^name: reviewer" "$TARGET/agents
 chk "agent description carried"        grep -qF "Reviews diffs for style violations" "$TARGET/agents/reviewer.md"
 chk "agent body carried over"          grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
-# Source-dependent report strings (a Codex model name, for example) moved to source-<tool>.sh.
-# What remains here are the checks that depend on the target-side parser output (mcp_json).
-
-# MCP registration commands (parsed as shell tokens — unaffected by comments, substrings,
-# line breaks, or control operators). mcp-commands.sh can accumulate or be regenerated per run
-# (a no-op run recreates an empty file for the audit trail), so this combines every relevant
-# run rather than trusting the single newest file.
-mcp_all="$(mktemp)"
-mcp_json="$(mktemp)"
-trap 'rm -f "$mcp_all" "$mcp_json"' EXIT
-if [ "$is_noop_rerun" = "1" ]; then
-  cat "$TARGET/.migrate/"*/mcp-commands.sh > "$mcp_all" 2>/dev/null || true
-else
-  cat "${mig_dir}mcp-commands.sh" > "$mcp_all" 2>/dev/null || true
-fi
-python3 "$script_dir/parse-mcp-commands.py" "$mcp_all" > "$mcp_json" 2>/dev/null || printf '[]' > "$mcp_json"
-
-chk "mcp commands generated"           test -s "$mcp_all"
-chk "mcp add: two servers registered"  jq -e 'length >= 2' "$mcp_json"
-chk "mcp add: everything registered"   jq -e 'any(.[]; .name=="everything")' "$mcp_json"
-chk "mcp add: everything env"          jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info"))' "$mcp_json"
-chk "mcp add: everything command"      jq -e 'any(.[]; .name=="everything" and .cmd[0]=="npx")' "$mcp_json"
-chk "mcp add: everything package arg"  jq -e 'any(.[]; .name=="everything" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
-chk "mcp add: everything complete"     jq -e 'any(.[]; .name=="everything" and any(.flags[]; .[0]=="--env" and .[1]=="LOG_LEVEL=info") and .cmd[0]=="npx" and any(.cmd[]; .=="@modelcontextprotocol/server-everything"))' "$mcp_json"
-chk "mcp add: secretsvc registered"    jq -e 'any(.[]; .name=="secretsvc")' "$mcp_json"
-chk "mcp add: secretsvc http"          jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http"))' "$mcp_json"
-chk "mcp add: secretsvc url"           jq -e 'any(.[]; .name=="secretsvc" and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
-chk "mcp add: secretsvc complete"      jq -e 'any(.[]; .name=="secretsvc" and any(.flags[]; .[0]=="--transport" and .[1]=="http") and any(.args[]; .=="https://example.com/mcp"))' "$mcp_json"
-# "disabled_one" is a source-defined value, but this check cannot even be expressed without
-# mcp_json (target parser output) — moving it to source-*.sh would kill the run with a set -u
-# undefined-variable error whenever that source is paired with a target that does not build
-# mcp_json. It stays here for the same reason as the other mcp add: * checks.
-chk_not "disabled server not added"    jq -e 'any(.[]; .name=="disabled_one")' "$mcp_json"
+# Source-dependent report strings (a Codex model name, for example) live in source-<tool>.sh.
 
 # Backups (existence + original contents) — filenames are Claude-specific; lookup uses _common.sh's find_run_artifact
 backup_claude="$(find_run_artifact backup/CLAUDE.md)"
