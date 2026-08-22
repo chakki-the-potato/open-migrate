@@ -1,0 +1,123 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # check-version-bump.sh diffs against origin/main, so the merge base has to exist.
+          fetch-depth: 0
+
+      - name: Shell syntax
+        run: |
+          fail=0
+          for f in install.sh scripts/*.sh scripts/checks/*.sh; do
+            bash -n "$f" || { echo "syntax error: $f"; fail=1; }
+          done
+          exit $fail
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          # scripts/checks/*.sh are sourced fragments that read variables their caller
+          # defines, so only the standalone scripts are checked here.
+          # SC1090/SC1091 are excluded because verify-migration.sh sources those fragments
+          # through a computed path — shellcheck cannot follow it, and that is by design.
+          shellcheck -S warning -e SC1090,SC1091 \
+            install.sh scripts/build-plugin.sh scripts/check-version-bump.sh \
+            scripts/seed-target.sh scripts/verify-migration.sh
+
+      - name: Distribution matches sources
+        run: ./scripts/build-plugin.sh --check
+
+      - name: Version bumped when shipped content changed
+        run: ./scripts/check-version-bump.sh origin/main
+
+      - name: Fixtures parse
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            jq -e . "$f" > /dev/null || { echo "invalid JSON: $f"; fail=1; }
+          done < <(find test/fixtures -name '*.json' ! -name '.credentials.json' ! -name 'auth.json')
+          python3 - <<'PY' || fail=1
+          import tomllib, pathlib, sys
+          bad = []
+          for p in pathlib.Path("test/fixtures").rglob("*.toml"):
+              try:
+                  tomllib.load(open(p, "rb"))
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          if bad:
+              sys.exit("invalid TOML:\n" + "\n".join(bad))
+          print("TOML fixtures parse")
+          PY
+          exit $fail
+
+      - name: Seed produces a target the verifier rejects
+        run: |
+          # The seed is the pre-migration state. Every "migrated" check must fail against it
+          # while the "existing content preserved" checks pass. A seed that passed the whole
+          # suite would mean the verifier asserts nothing about the migration itself.
+          root="$(mktemp -d)"
+          fail=0
+
+          probe() {
+            # Declare before assigning: `local a="$1" b="$root/$a"` expands every word before
+            # any assignment takes effect, so $a would still be empty and every probe would
+            # land in the same directory — green, and testing nothing.
+            local label tool src scope dir rc passes fails
+            label="$1"; tool="$2"; src="$3"; scope="$4"; dir="$root/$label"
+            ./scripts/seed-target.sh "$label" "$dir" > /dev/null
+            if ./scripts/verify-migration.sh "$dir" "$tool" "$src" $scope > "$dir.out" 2>&1; then
+              rc=0
+            else
+              rc=$?
+            fi
+            passes=$(grep -c '^PASS' "$dir.out" || true)
+            fails=$(grep -c '^FAIL' "$dir.out" || true)
+            echo "$label: rc=$rc PASS=$passes FAIL=$fails"
+            if [ "$rc" -eq 0 ]; then
+              echo "  a seeded-only target must not pass the suite"; fail=1
+            fi
+            if [ "$fails" -eq 0 ]; then
+              echo "  nothing failed — the migrated-content checks assert nothing"; fail=1
+            fi
+            if [ "$passes" -eq 0 ]; then
+              echo "  nothing passed — the seed does not match what the verifier expects"; fail=1
+            fi
+          }
+
+          probe claude         claude codex  ""
+          probe codex          codex  claude ""
+          probe cursor         cursor codex  ""
+          probe grok           grok   codex  ""
+          probe claude-project claude codex  project
+          exit $fail
+
+      - name: Seed refuses a real tool home
+        run: |
+          mkdir -p "$HOME/.claude"
+          if ./scripts/seed-target.sh claude "$HOME/.claude/probe" 2>/dev/null; then
+            echo "seed wrote into a real tool home"; exit 1
+          fi
+          if [ -e "$HOME/.claude/probe" ]; then
+            echo "seed left files behind in a real home"; exit 1
+          fi
+          echo "real-home guard holds"
+
+      - name: No real secret shapes committed
+        run: |
+          # The fixtures deliberately carry one fake secret so redaction has something to
+          # act on. Any other value matching a real key prefix is a leak.
+          hits=$(grep -rEn 'sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|xoxb-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}' \
+                   --exclude-dir=.git . | grep -v 'sk-test-FAKE-SECRET-123' || true)
+          if [ -n "$hits" ]; then
+            echo "possible secret committed:"; echo "$hits"; exit 1
+          fi
+          echo "no unexpected secret shapes found"

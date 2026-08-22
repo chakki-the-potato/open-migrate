@@ -176,11 +176,18 @@ What makes this affordable is that **no direction has its own test.** There are 
 
 Project scope is verified separately at 26 checks, and an empty target still fails 20 of them, so the verifier is not passing everything by default.
 
-To run it yourself:
+To run it yourself, seed a target first and then migrate into it:
 
 ```
-./scripts/verify-migration.sh <target root> <target tool> <source tool>
+./scripts/seed-target.sh claude /tmp/t          # the pre-migration state
+/open-migrate codex claude                      # migrate, pointing the destination at /tmp/t
+./scripts/verify-migration.sh /tmp/t claude codex
 ```
+
+The seed step matters. Half the checks assert that content already on the target survived the
+merge, and against an empty directory those pass for the wrong reason. Seeding is also what makes
+the suite runnable from a clean checkout — the target directories themselves are not committed.
+Running the verifier against a seed alone should fail: 34 to 43 checks, depending on the tool.
 
 ## What is not migrated
 
