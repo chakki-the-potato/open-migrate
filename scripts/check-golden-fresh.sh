@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Fails when a knowledge doc moved ahead of the golden output it produced.
+#
+# The migration is performed by an agent reading core/, so CI cannot re-run it. Without
+# this gate a wrong edit to core/tools/claude.md ships green: every automated check here
+# tests the verifier, not the conversion. Pinning each golden to the hash of the docs it
+# came from turns "the docs changed and nobody re-measured" into a build failure.
+#
+#   ./scripts/check-golden-fresh.sh
+#
+# When it fails, regenerate the named directions:
+#   ./scripts/seed-target.sh <target-tool> /tmp/g
+#   /open-migrate <source> <target>     # pointed at /tmp/g
+#   ./scripts/freeze-golden.sh <source> <target-tool> /tmp/g
+set -uo pipefail
+
+repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_dir" || { echo "FAIL: cannot enter the repository at $repo_dir" >&2; exit 1; }
+
+manifest="test/golden/manifest.json"
+if [ ! -f "$manifest" ]; then
+  echo "SKIP: no $manifest yet — nothing frozen"
+  exit 0
+fi
+
+python3 - <<'PY'
+import hashlib, json, pathlib, sys
+
+manifest = json.loads(pathlib.Path("test/golden/manifest.json").read_text())
+directions = manifest.get("directions", {})
+if not directions:
+    print("SKIP: manifest has no directions")
+    sys.exit(0)
+
+stale, missing = [], []
+for name, entry in directions.items():
+    if not pathlib.Path("test/golden", name).is_dir():
+        missing.append(name)
+        continue
+    drifted = [
+        doc for doc, pinned in entry["docs"].items()
+        if not pathlib.Path(doc).exists()
+        or hashlib.sha256(pathlib.Path(doc).read_bytes()).hexdigest() != pinned
+    ]
+    if drifted:
+        stale.append((name, drifted))
+
+for name in missing:
+    print(f"FAIL: {name} is in the manifest but test/golden/{name}/ does not exist", file=sys.stderr)
+for name, drifted in stale:
+    print(f"FAIL: {name} was produced by an older revision of: {', '.join(drifted)}", file=sys.stderr)
+
+if stale or missing:
+    print(
+        "\n      A golden is the only evidence that the current docs still convert correctly.\n"
+        "      Re-run the affected directions and re-freeze them, or revert the doc change.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+print(f"OK: {len(directions)} golden direction(s) match the current knowledge docs")
+PY

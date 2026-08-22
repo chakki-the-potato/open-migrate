@@ -1,0 +1,16 @@
+{
+  "directions": {
+    "codex-to-claude": {
+      "source": "codex",
+      "target": "claude",
+      "scope": "home",
+      "docs": {
+        "core/procedure.md": "0badaa4907c56de177e1f4fb03d2f8224c26304beb34c1fb73552c6c908efdf7",
+        "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
+        "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
+        "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
+        "core/tools/codex.md": "0e16ebbfb2149005a2a2923fd496416aa4ba3be93d83b81ad697885ab79c8ec3"
+      }
+    }
+  }
+}
