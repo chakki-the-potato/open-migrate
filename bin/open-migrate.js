@@ -32,17 +32,28 @@ ${c.b}open-migrate${c.x} — install the migration skill into an AI coding tool
   npx open-migrate <tool>       claude | codex | cursor | grok
   npx open-migrate --all        every tool already present on this machine
 
+  npx open-migrate --uninstall <tool>   remove the skill from that tool
+  npx open-migrate --uninstall --all    remove it everywhere it is installed
+
 This copies documentation only. To actually migrate settings, open the tool
 afterwards and run ${c.b}/open-migrate${c.x}.
 `);
+}
+
+function skillDir(tool) {
+  return path.join(tool.home(), "skills", "open-migrate");
 }
 
 function installed(tool) {
   return fs.existsSync(tool.home());
 }
 
+function hasSkill(tool) {
+  return fs.existsSync(skillDir(tool));
+}
+
 function install(tool) {
-  const dest = path.join(tool.home(), "skills", "open-migrate");
+  const dest = skillDir(tool);
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.cpSync(PAYLOAD, dest, { recursive: true });
@@ -62,6 +73,44 @@ function report(tool, result) {
   console.log(`${c.g}✓${c.x} ${tool.label} ${c.d}${result.dest}${c.x}`);
   if (result.removed) {
     console.log(`  ${c.d}removed the superseded /migrate install${c.x}`);
+  }
+}
+
+// A copy installed through a plugin manager lives outside skills/ and is tracked by that
+// manager's own state. Deleting the directory here would leave the manager believing a
+// plugin is installed that is not, so these are reported and never removed.
+//
+// Only two of the four tools have a plugin manager. Looking for a plugin cache under the
+// other two would name a command that does not exist for them.
+const PLUGIN_MANAGER = { claude: "claude plugin uninstall", codex: "codex plugin remove" };
+
+function pluginCopies(tool) {
+  if (!PLUGIN_MANAGER[tool.key]) return [];
+  const cache = path.join(tool.home(), "plugins", "cache");
+  if (!fs.existsSync(cache)) return [];
+  return fs
+    .readdirSync(cache)
+    .map((market) => ({ market, dir: path.join(cache, market, "open-migrate") }))
+    .filter((entry) => fs.existsSync(entry.dir));
+}
+
+function uninstall(tool) {
+  const dest = skillDir(tool);
+  const removed = fs.existsSync(dest);
+  if (removed) fs.rmSync(dest, { recursive: true, force: true });
+  return { dest, removed, plugins: pluginCopies(tool) };
+}
+
+function reportRemoval(tool, result) {
+  if (result.removed) {
+    console.log(`${c.g}✓${c.x} ${tool.label} ${c.d}removed ${result.dest}${c.x}`);
+  } else {
+    console.log(`${c.d}·${c.x} ${tool.label} ${c.d}nothing at ${result.dest}${c.x}`);
+  }
+  for (const copy of result.plugins) {
+    console.log(`  ${c.y}!${c.x} a plugin copy is still installed ${c.d}${copy.dir}${c.x}`);
+    console.log(`    ${c.d}left alone — the plugin manager owns it:${c.x}`);
+    console.log(`    ${c.b}${PLUGIN_MANAGER[tool.key]} open-migrate@${copy.market}${c.x}`);
   }
 }
 
@@ -107,6 +156,53 @@ async function pick() {
   return list[n - 1];
 }
 
+function runUninstall(args) {
+  // Said before anything is deleted, because afterwards it is advice the reader can no
+  // longer act on: rolling back needs the skill that is about to go.
+  console.log(`
+${c.y}Removing the skill does not undo a migration.${c.x} Settings that already moved stay
+where they landed. Run ${c.b}/open-migrate rollback${c.x} first if you want them back — once
+the skill is gone you have to reinstall it to roll anything back.`);
+
+  const named = args.find((a) => !a.startsWith("-"));
+  let targets;
+
+  if (named) {
+    const tool = TOOLS.find((t) => t.key === named.toLowerCase());
+    if (!tool) {
+      console.error(`\n${c.r}Unknown tool: ${named}${c.x}`);
+      console.error(`${c.d}Expected one of: ${TOOLS.map((t) => t.key).join(", ")}${c.x}`);
+      process.exit(1);
+    }
+    targets = [tool];
+  } else if (args.includes("--all")) {
+    targets = TOOLS.filter(hasSkill);
+    if (!targets.length) {
+      console.log(`\n${c.d}The skill is not installed in any of the four tool homes.${c.x}`);
+      return;
+    }
+  } else {
+    // Nothing was named. There is no record of where a previous run installed to, so the
+    // only honest options are to show what is there and let the caller say which.
+    const found = TOOLS.filter(hasSkill);
+    console.log();
+    if (!found.length) {
+      console.log(`${c.d}The skill is not installed in any of the four tool homes.${c.x}`);
+      return;
+    }
+    console.log(`${c.b}Installed in:${c.x}`);
+    found.forEach((t) => console.log(`  ${t.label} ${c.d}${skillDir(t)}${c.x}`));
+    console.log(`
+${c.d}Name which one, or remove them all:${c.x}
+  ${c.b}npx open-migrate --uninstall ${found[0].key}${c.x}
+  ${c.b}npx open-migrate --uninstall --all${c.x}`);
+    return;
+  }
+
+  console.log();
+  targets.forEach((tool) => reportRemoval(tool, uninstall(tool)));
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -114,6 +210,8 @@ async function main() {
   if (args.includes("-v") || args.includes("--version")) {
     return console.log(require("../package.json").version);
   }
+
+  if (args.includes("--uninstall")) return runUninstall(args);
 
   if (!fs.existsSync(PAYLOAD)) {
     console.error(`${c.r}The skill payload is missing from this package (${PAYLOAD}).${c.x}`);
