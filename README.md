@@ -71,10 +71,14 @@ codex plugin add open-migrate@migrate-marketplace
 
 A plugin answers to `<plugin>:<skill>`, so it becomes `/open-migrate:open-migrate` — the
 namespace, not a typo. Cursor and Grok Build have no plugin manager; use `npx` for those.
-
-**Do not install both ways in one tool.** Two skills of the same name, and which one loads is
-not predictable.
 </details>
+
+**Pick one route per tool.** Installing both ways leaves two skills of the same name and no way
+to tell which one a run followed. The plugin copy is the one that goes quiet: it stays at whatever
+version its marketplace snapshot holds, so it can sit beside a current install advertising
+behaviour that was removed releases ago. This is not hypothetical — it was found on the
+development machine, a plugin four minor versions behind still offering to migrate MCP servers,
+which this tool stopped doing. If you switch routes, remove the old one first.
 
 <details>
 <summary>Prefer a clone?</summary>
@@ -83,6 +87,36 @@ not predictable.
 git clone https://github.com/chakki-the-potato/open-migrate.git
 cd open-migrate
 ./install.sh claude      # or codex / cursor / grok
+```
+</details>
+
+<details>
+<summary>Removing it</summary>
+
+Removing the skill does not undo a migration. Settings that moved stay where they landed, so run
+`/open-migrate rollback` **first** if you want them back — once the skill is gone you have to
+reinstall it to roll anything back.
+
+Whichever route installed it, the skill is one directory:
+
+```
+rm -rf ~/.claude/skills/open-migrate   # or ~/.codex, ~/.cursor, ~/.grok — CODEX_HOME and GROK_HOME apply
+```
+
+If you installed the plugin instead, remove it through the manager:
+
+```
+claude plugin uninstall open-migrate@migrate-marketplace
+codex plugin remove open-migrate@migrate-marketplace
+```
+
+That takes the installed copy and its cache. The marketplace stays configured, so a later
+`plugin add` brings the plugin back at whatever revision the snapshot holds — which is how the
+stale copy described above survived being deleted. Drop the source too if you are done:
+
+```
+claude plugin marketplace remove migrate-marketplace
+codex plugin marketplace remove migrate-marketplace
 ```
 </details>
 
@@ -206,6 +240,8 @@ them, so the verifier is not rubber-stamping.
 What makes that affordable: there are **no per-direction converters**. Each tool has one
 knowledge doc — how to read it, how to write into it — and a direction is just one doc paired
 with another. Four fixtures and four verifiers cover all twelve.
+
+Project scope is measured the same way, as a thirteenth frozen run rather than a claim in prose.
 
 Those runs are frozen in the repository, each one pinned to the sha256 of the docs that produced
 it. The migration is performed by an agent reading those docs, so CI cannot re-run it — but it can
