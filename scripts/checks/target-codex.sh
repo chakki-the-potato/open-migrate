@@ -100,8 +100,8 @@ chk "prompt body carried over"         grep -qF "warmly and mention today" "$TAR
 fi
 
 # Backups (existence + original contents) — security.md's write-safety rules apply to every target; the filenames are Codex-specific
-codex_backup_agents="$(find_run_artifact backup/AGENTS.md)"
-codex_backup_config="$(find_run_artifact backup/config.toml)"
+codex_backup_agents="$(find_original_artifact backup/AGENTS.md)"
+codex_backup_config="$(find_original_artifact backup/config.toml)"
 : "${codex_backup_agents:=$TARGET/.migrate/__missing__/backup/AGENTS.md}"
 : "${codex_backup_config:=$TARGET/.migrate/__missing__/backup/config.toml}"
 codex_toml_to_json "$codex_backup_config" > "$codex_backup_config_json" || printf '{}' > "$codex_backup_config_json"

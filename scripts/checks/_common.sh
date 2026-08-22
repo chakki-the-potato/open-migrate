@@ -20,6 +20,9 @@
 #                       Only then may artifacts from an earlier run be accepted.
 #                       When "0", trust mig_dir alone, so a broken newest run
 #                       cannot pass by borrowing an older run's artifacts.
+#   find_original_artifact <path relative to the run dir>
+#                       The earliest backup of that file — the copy that predates every
+#                       run. Use it for "the backup is the original" checks.
 #   find_run_artifact <path relative to the run dir>
 #                       Helper that resolves the path of a point-in-time artifact
 #                       (backup/CLAUDE.md, for example) while honoring
@@ -49,6 +52,17 @@ find_run_artifact() {
   else
     echo "${mig_dir}${rel}"
   fi
+}
+
+# find_original_artifact <path relative to the run dir>
+#   The *pristine* copy of a file, for the checks that assert "the backup is the original".
+#   A backup is written immediately before a file is modified, so the earliest backup of a
+#   given file is the version that predates every run — later backups are snapshots of
+#   already-migrated content. find_run_artifact returns the newest and is right for asking
+#   "what did this run see"; this one is right for asking "what did the target start as".
+find_original_artifact() {
+  local rel="$1"
+  ls "$TARGET/.migrate/"*/"$rel" 2>/dev/null | sort | head -1
 }
 
 # Global rules — override precedence (the decoy must not leak through)

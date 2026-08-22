@@ -61,8 +61,8 @@ chk "agent body carried over"          grep -qF "strict code reviewer" "$TARGET/
 # Source-dependent report strings (a Codex model name, for example) live in source-<tool>.sh.
 
 # Backups (existence + original contents) — filenames are Claude-specific; lookup uses _common.sh's find_run_artifact
-backup_claude="$(find_run_artifact backup/CLAUDE.md)"
-backup_settings="$(find_run_artifact backup/settings.json)"
+backup_claude="$(find_original_artifact backup/CLAUDE.md)"
+backup_settings="$(find_original_artifact backup/settings.json)"
 : "${backup_claude:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
 : "${backup_settings:=$TARGET/.migrate/__missing__/backup/settings.json}"
 

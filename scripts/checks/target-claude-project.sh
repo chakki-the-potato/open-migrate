@@ -27,7 +27,7 @@ chk_not "no model at project scope"   jq -e '.model' "$TARGET/.claude/settings.j
 chk_not "no defaultMode at project"   jq -e '.permissions.defaultMode' "$TARGET/.claude/settings.json"
 
 # Backup of anything pre-existing that got modified.
-claude_proj_backup="$(find_run_artifact backup/CLAUDE.md)"
+claude_proj_backup="$(find_original_artifact backup/CLAUDE.md)"
 : "${claude_proj_backup:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
 chk "backup of pre-existing CLAUDE.md" test -f "$claude_proj_backup"
 chk "backup is the original"           grep -qF "Keep this project note." "$claude_proj_backup"

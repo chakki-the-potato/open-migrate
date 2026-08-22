@@ -99,8 +99,8 @@ chk "agent description carried"        grep -qF "Reviews diffs for style violati
 chk "agent body carried"               grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
 # Backups (existence + original contents) — security.md's write-safety rules; the filenames are Grok-specific
-grok_backup_agents="$(find_run_artifact backup/AGENTS.md)"
-grok_backup_config="$(find_run_artifact backup/config.toml)"
+grok_backup_agents="$(find_original_artifact backup/AGENTS.md)"
+grok_backup_config="$(find_original_artifact backup/config.toml)"
 : "${grok_backup_agents:=$TARGET/.migrate/__missing__/backup/AGENTS.md}"
 : "${grok_backup_config:=$TARGET/.migrate/__missing__/backup/config.toml}"
 grok_toml_to_json "$grok_backup_config" > "$grok_backup_config_json" || printf '{}' > "$grok_backup_config_json"

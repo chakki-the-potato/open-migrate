@@ -8,6 +8,7 @@ inherit = "core"
 [shell_environment_policy.set]
 FIXTURE_FLAG = "1"
 SERVICE_API_KEY = "sk-test-FAKE-SECRET-123"
+TRUSTED_CLIENT_SHA256S = "02aa45f33f6384022cfc3e1045ad58ac1af9db9b095d259367f3a3fb6aaf33a7"
 
 [projects."/tmp/some-project"]
 trust_level = "trusted"

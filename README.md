@@ -18,6 +18,13 @@ adapters/*/SKILL.md per-tool entry points (thin shells that differ only in desti
 
 ## Install
 
+**One install usually covers all four tools.** Grok Build reads `~/.claude/skills/` and
+`~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`, so a plugin
+installed for Claude Code shows up in Grok and Cursor as well — namespaced
+`/open-migrate:open-migrate`. Install it once for the tool you already have, and reach for the
+install script only when you want an entry point whose destination is fixed. The caution below
+explains when that matters.
+
 ### Claude Code and Codex CLI — plugin
 
 Both tools install the same package without conversion, but their commands differ.
@@ -103,6 +110,14 @@ Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.
 
 Prefer the entry point installed for the tool you are actually using. The plugin distribution determines its destination at runtime and asks rather than guessing when it cannot confirm which tool it is running in — but the destination-specific entry point from `./install.sh <dest>` has its destination fixed, so it cannot be confused at all.
 
+## Before you start
+
+**Do not delete the source tool's configuration directory.** This tool reads files from disk —
+it never launches the source tool — so an expired subscription or an uninstalled CLI changes
+nothing. But `~/.codex`, `~/.cursor`, and `~/.grok` often get cleaned up in the same sitting as
+the cancellation, and once the directory is gone there is nothing left to migrate. Move the
+settings first, then clean up.
+
 ## Usage
 
 ```
@@ -160,22 +175,26 @@ Each direction was scored by a deterministic verifier after actually migrating a
 
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
-| **Claude** | — | 48 | 47 | 55 |
-| **Codex** | 59 | — | 55 | 63 |
-| **Cursor** | 47 | 44 | — | 49 |
-| **Grok** | 49 | 46 | 48 | — |
+| **Claude** | — | 47 | 46 | 54 |
+| **Codex** | 64 | — | 60 | 68 |
+| **Cursor** | 46 | 43 | — | 48 |
+| **Grok** | 47 | 44 | 46 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
 
-The Codex-source directions run extra checks the others do not. The Codex fixture's rules file
-carries three argv-prefix rules that cannot become target permissions — one holding a quote and
-parentheses, one holding whitespace, one whose joined form runs past 200 characters — and those
-checks assert that each is kept out of the target's permission list and named verbatim in the
-report instead.
+The Codex-source directions run noticeably more checks than the others. That fixture carries the
+cases a real `~/.codex` turned up: three argv-prefix rules that cannot become target permissions
+(one holding a quote and parentheses, one holding whitespace, one whose joined form runs past 200
+characters), a hook field outside the shared structure, a native Codex tool-name matcher, a hook
+command pointing into Codex's own directory, a secret-shaped environment value, and a
+digest-shaped one. Each has a check asserting the rule was honored *and* that the report says so
+— skipping something silently fails just as loudly as converting it wrong.
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
 Project scope is verified separately at 26 checks, and an empty target still fails 20 of them, so the verifier is not passing everything by default.
+
+Two gaps are open and not counted as covered. A Cursor source has no secret-report coverage at all — its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into. Claude and Grok sources have the surface but their committed target runs predate it, so restoring that check means regenerating those directions.
 
 To run it yourself, seed a target first and then migrate into it:
 
@@ -188,7 +207,35 @@ To run it yourself, seed a target first and then migrate into it:
 The seed step matters. Half the checks assert that content already on the target survived the
 merge, and against an empty directory those pass for the wrong reason. Seeding is also what makes
 the suite runnable from a clean checkout — the target directories themselves are not committed.
-Running the verifier against a seed alone should fail: 34 to 43 checks, depending on the tool.
+Running the verifier against a seed alone should fail: 35 to 46 checks, depending on the tool.
+
+## How this relates to Codex CLI's `/import`
+
+Codex CLI ships its own importer, which pulls from Cursor and Claude Code into Codex. Where it
+applies it is first-party and you should probably use it.
+
+This tool covers what that does not: migrating **out of** Codex, and migrating **into** Cursor or
+Grok Build from anywhere. It also works at a different level — home-scope configuration plus
+project scope, explicit secret handling, an approval gate before any write, a loss report, and
+rollback.
+
+## What can move
+
+| | Claude Code | Codex CLI | Cursor | Grok Build |
+|---|---|---|---|---|
+| Global rules | `CLAUDE.md` | `AGENTS.md` | account-stored — manual | `AGENTS.md` |
+| Skills | yes | yes | yes | yes |
+| Subagents | yes | yes | yes | yes |
+| Commands / prompts | `commands/` | `prompts/` | as a skill | as a skill |
+| Hooks | yes | yes | yes | yes |
+| Permissions | allow / ask / deny | argv-prefix DSL | allow / deny — no ask | allow / ask / deny |
+| Env injection | yes | yes | **no surface** | yes |
+| Approval policy | suggestion only | suggestion only | suggestion only | suggestion only |
+| MCP servers | out of scope | out of scope | out of scope | out of scope |
+| Credentials | never | never | never | never |
+
+A cell says where the category lands, not that the conversion is lossless. "Where loss happens"
+below names the gaps that survive conversion.
 
 ## What is not migrated
 

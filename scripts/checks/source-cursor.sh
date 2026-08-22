@@ -4,7 +4,6 @@
 # variables that a target-*.sh creates. _common.sh already verified that
 # migration-report.md itself exists.
 
-chk "report: secret re-entry listed"      grep -qF "X-API-Key" "${mig_dir}migration-report.md"
 chk "report: approval policy suggested"   grep -qE "approvalMode|approval_policy|sandbox_mode|defaultMode" "${mig_dir}migration-report.md"
 
 # User Rules has no local file — it lives only in the Cursor account (cloud-synced), which
@@ -29,3 +28,7 @@ chk "report: User Rules under manual action" \
 # on the source side to carry over.
 chk "report: approvalMode value quoted"   grep -qF "allowlist" "${mig_dir}migration-report.md"
 chk "report: app-managed area noted"      grep -qF "skills-cursor" "${mig_dir}migration-report.md"
+
+# Cursor has no surface left that carries a secret: its only one was mcp.json, and MCP is no
+# longer migrated. There is no env-injection surface to move the secret into, so secret-report
+# coverage for a Cursor source is absent by construction rather than by omission.

@@ -69,8 +69,8 @@ chk "approvalMode unchanged"           sh -c 'cur=$(jq -r ".approvalMode // \"__
 # Backups — the JSON config merge rule ("copy the original to backup/<filename> before
 # modifying") covers both files (hooks.json, cli-config.json); each original
 # must be preserved.
-cursor_backup_hooks="$(find_run_artifact backup/hooks.json)"
-cursor_backup_cli="$(find_run_artifact backup/cli-config.json)"
+cursor_backup_hooks="$(find_original_artifact backup/hooks.json)"
+cursor_backup_cli="$(find_original_artifact backup/cli-config.json)"
 : "${cursor_backup_hooks:=$TARGET/.migrate/__missing__/backup/hooks.json}"
 : "${cursor_backup_cli:=$TARGET/.migrate/__missing__/backup/cli-config.json}"
 
