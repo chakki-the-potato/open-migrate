@@ -28,6 +28,7 @@ If the diff touches `core/` — CI cannot convert anything, so a stale golden is
 - [ ] Re-froze those directions with `./scripts/freeze-golden.sh` and committed the goldens —
       `./scripts/check-golden-fresh.sh` is clean
 - [ ] The run read `core/` from this repository, not from an installed copy of the skill
+- [ ] The run could not see `test/golden/` — name the checkout or worktree it ran from
 - [ ] Any new check was measured **failing** against an unmigrated target before it passed
 
 See https://github.com/chakki-the-potato/open-migrate/blob/main/CONTRIBUTING.md for what each of these means.
