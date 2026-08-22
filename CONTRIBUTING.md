@@ -32,8 +32,8 @@ way in CI.
 
 The version lives in two manifests — `.claude-plugin/plugin.json` for the plugin and
 `package.json` for npm — two release surfaces for the same content. Move both. CI compares them
-on every run, whatever the diff touched, and a release tag matching only one makes `publish.yml`
-refuse.
+before it looks at what the diff touched, so a commit that moves only one fails even when nothing
+shipped changed, and a release tag matching only one makes `publish.yml` refuse.
 
 ### 3. CI does not test the migration itself
 

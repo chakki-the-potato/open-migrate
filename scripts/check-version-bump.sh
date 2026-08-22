@@ -32,7 +32,13 @@ fi
 # matter what else the commit touched, so it is checked before the shipped-content test
 # below can exit early: a commit that moves only .claude-plugin/plugin.json changes
 # nothing in the shipped set and used to leave the two manifests disagreeing on main.
-pkg=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+# Both sides are read from HEAD. Reading one from the working tree compares a staged-but-
+# uncommitted edit against a committed one and reports on a state no commit ever had.
+pkg=$(git show HEAD:package.json 2>/dev/null | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+if [ -z "$pkg" ]; then
+  echo "FAIL: could not read the version from package.json at HEAD" >&2
+  exit 1
+fi
 if [ "$pkg" != "$now" ]; then
   echo "FAIL: package.json is $pkg but .claude-plugin/plugin.json is $now — they must match" >&2
   exit 1
