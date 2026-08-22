@@ -1,67 +1,76 @@
 # open-migrate
 
-Move your settings in one step when you switch AI coding tools. It reads rules, skills, subagents, hooks, permissions, and environment variables from the source tool and converts them into the destination tool's format.
+**Switching AI coding tools? Take your settings with you.**
 
-Four tools are supported — **Claude Code, Codex CLI, Cursor, and Grok Build** — for 12 possible directions.
+[![ci](https://github.com/chakki-the-potato/open-migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/chakki-the-potato/open-migrate/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## How it works
+You cancelled Codex and paid for Claude. Your rules, skills, subagents, hooks, and permissions
+are still sitting in `~/.codex`. open-migrate reads them and writes the equivalent into the tool
+you moved to — showing you a plan first, and letting you undo it after.
 
-There are no 12 per-direction converters. Each tool gets a single knowledge doc describing "how to read my config" and "how to write into me", and the AI combines the source doc with the destination doc to do the conversion. Adding a tool adds one doc and 2N directions.
+Works between **Claude Code, Codex CLI, Cursor, and Grok Build**, in any of the 12 directions.
 
-```
-core/
-  procedure.md      the 5-step procedure (Scan → Plan → Confirm → Apply → Report)
-  security.md       secret detection and handling policy
-  tools/*.md        per-tool knowledge docs (read rules and write rules, both sides)
-adapters/*/SKILL.md per-tool entry points (thin shells that differ only in destination)
-```
+---
 
-## Install
+## What moves
 
-**One install usually covers all four tools.** Grok Build reads `~/.claude/skills/` and
-`~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`, so a plugin
-installed for Claude Code shows up in Grok and Cursor as well — namespaced
-`/open-migrate:open-migrate`. Install it once for the tool you already have, and reach for the
-install script only when you want an entry point whose destination is fixed. The caution below
-explains when that matters.
+| | Claude Code | Codex CLI | Cursor | Grok Build |
+|---|---|---|---|---|
+| Global rules | `CLAUDE.md` | `AGENTS.md` | account-stored → manual | `AGENTS.md` |
+| Skills | yes | yes | yes | yes |
+| Subagents | yes | yes | yes | yes |
+| Commands / prompts | `commands/` | `prompts/` | as a skill | as a skill |
+| Hooks | yes | yes | yes | yes |
+| Permissions | allow / ask / deny | argv-prefix DSL | allow / deny, no ask | allow / ask / deny |
+| Environment variables | yes | yes | no surface | yes |
+| Approval policy | suggested, never applied | suggested | suggested | suggested |
+| MCP servers | out of scope | out of scope | out of scope | out of scope |
+| Credentials | never read | never read | never read | never read |
 
-### Claude Code and Codex CLI — plugin
+A cell says where a category lands, not that the conversion is lossless.
+[Where loss happens](#where-loss-happens) is the honest part.
 
-Both tools install the same package without conversion, but their commands differ.
+---
 
-**Claude Code** — inside a session:
+## Quickstart
+
+### 1. Install
+
+One install usually covers all four tools — Grok and Cursor also read Claude's and Codex's skill
+directories.
+
+<details open>
+<summary><b>Claude Code</b> — plugin (recommended)</summary>
 
 ```
 /plugin marketplace add chakki-the-potato/open-migrate
 /plugin install open-migrate@migrate-marketplace
 ```
 
-or from the shell:
+Restart, then invoke it as `/open-migrate:open-migrate`. A plugin always answers to
+`<plugin>:<skill>`; both names are `open-migrate` here, so it appears twice. That is the
+namespace, not a typo.
 
-```
-claude plugin marketplace add chakki-the-potato/open-migrate
-claude plugin install open-migrate@migrate-marketplace
-```
+Want the short `/open-migrate`? Install it as a personal skill instead — clone the repo and run
+`./install.sh claude`, keeping the plugin disabled. You then update with
+`git pull && ./install.sh claude`. **Do not run both:** two skills of one name in one home, and
+which one loads is not predictable.
+</details>
 
-**Codex CLI** — from the shell. It needs the full URL, and the `@marketplace` qualifier is required on install:
+<details>
+<summary><b>Codex CLI</b> — plugin</summary>
 
 ```
 codex plugin marketplace add https://github.com/chakki-the-potato/open-migrate
 codex plugin add open-migrate@migrate-marketplace
 ```
 
-The plugin distribution determines which tool it is running in and uses that as the destination.
+Codex has no `plugin update`; to upgrade, refresh the marketplace snapshot and add it again.
+</details>
 
-**Updating** also differs. Claude Code has a one-step update; Codex has no `plugin update` — refresh the marketplace snapshot first, then reinstall.
-
-```
-claude plugin update open-migrate@migrate-marketplace
-
-codex plugin marketplace upgrade migrate-marketplace
-codex plugin add open-migrate@migrate-marketplace
-```
-
-### Cursor and Grok Build — install script
+<details>
+<summary><b>Cursor / Grok Build</b> — install script</summary>
 
 ```
 git clone https://github.com/chakki-the-potato/open-migrate.git
@@ -69,247 +78,157 @@ cd open-migrate
 ./install.sh cursor    # → ~/.cursor/skills/open-migrate
 ./install.sh grok      # → ~/.grok/skills/open-migrate  (honors GROK_HOME)
 ```
+</details>
 
-`./install.sh claude` and `./install.sh codex` exist too, for installing as a personal skill instead of a plugin. Pick one method per tool — installing both leaves two skills named `migrate` in the same home.
+### 2. Do not delete the old tool's directory yet
 
-If Grok Build is not installed yet: `curl -fsSL https://x.ai/cli/install.sh | bash`.
+open-migrate reads files from disk and never launches the source tool, so a cancelled
+subscription changes nothing — but a deleted `~/.codex` leaves nothing to migrate. Move first,
+clean up after.
 
-### Upgrading from `/migrate`
-
-The command used to be `/migrate`, which never said whether `codex` meant the source or the destination. It is now `/open-migrate` and takes both.
-
-`./install.sh` removes the old skill for you. Plugin installs need the old one removed by hand, since the plugin itself was renamed:
-
-```
-claude plugin uninstall migrate@migrate-marketplace
-claude plugin install open-migrate@migrate-marketplace
-
-codex plugin remove migrate
-codex plugin marketplace upgrade migrate-marketplace
-codex plugin add open-migrate@migrate-marketplace
-```
-
-Leaving the old one installed means two commands answer, one of them stale.
-
-### Install status verified
-
-Installation and skill loading were checked on a real machine, not just in tests.
-
-| Tool | Install | Skill loads | Invoke as |
-|---|---|---|---|
-| Claude Code | plugin | verified — a live session lists it | `/open-migrate:open-migrate` |
-| Claude Code | `./install.sh claude` | verified | `/open-migrate` |
-| Codex CLI | plugin | loader confirmed (`plugin list` reports `installed, enabled`), full round trip unverified | `/open-migrate:open-migrate` |
-| Cursor | `./install.sh cursor` | verified — `cursor-agent` lists `open-migrate` | `/open-migrate` |
-| Grok Build | `./install.sh grok` | verified — `grok inspect` lists it | `/open-migrate` |
-
-**A plugin install answers to `/<plugin>:<skill>`, never to the bare name.** Both are
-`open-migrate` here, so the command is `/open-migrate:open-migrate` — that is the namespace, not
-a typo. If you want the short `/open-migrate`, install it as a personal skill with
-`./install.sh claude` instead and keep the plugin disabled; you then update with
-`git pull && ./install.sh claude` rather than `claude plugin update`. Do not run both: two skills
-of the same name in one home, and which one loads is not predictable.
-
-Grok Build has a built-in `/migrate`, which is part of why this command is named `/open-migrate` — the names no longer collide, so it stays unqualified everywhere.
-
-### A caution about compatibility loading
-
-Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`. That means **a plugin installed for Claude also shows up inside Grok and Cursor**, namespaced (`/open-migrate:open-migrate`).
-
-Prefer the entry point installed for the tool you are actually using. The plugin distribution determines its destination at runtime and asks rather than guessing when it cannot confirm which tool it is running in — but the destination-specific entry point from `./install.sh <dest>` has its destination fixed, so it cannot be confused at all.
-
-## Before you start
-
-**Do not delete the source tool's configuration directory.** This tool reads files from disk —
-it never launches the source tool — so an expired subscription or an uninstalled CLI changes
-nothing. But `~/.codex`, `~/.cursor`, and `~/.grok` often get cleaned up in the same sitting as
-the cancellation, and once the directory is gone there is nothing left to migrate. Move the
-settings first, then clean up.
-
-## Usage
+### 3. Run it
 
 ```
 /open-migrate                  ask which tools
 /open-migrate codex claude     source first, then destination
-/open-migrate rollback         list runs and undo one
+/open-migrate rollback         list past runs and undo one
 ```
 
-Installed as a plugin the command is `/open-migrate:open-migrate` — same arguments, namespaced
-name. The short form below is written unqualified for readability.
+Plain language works too: *"move my codex settings into claude"*.
 
-Both tools are inputs, so the direction is never in doubt — and you can migrate **into a tool you have not installed yet.** Running inside Claude, you can prepare a `~/.grok` before you switch to Grok, which is usually the order people actually do it in.
+Both tools are inputs, so the direction is never ambiguous — and you can migrate **into a tool
+you have not installed yet**. Preparing `~/.grok` before you switch to Grok is the order people
+actually do it in.
 
-Natural language works as well: "move my codex settings into claude" carries the same two values.
+---
 
-A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
+## What a run looks like
 
-Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `config.toml`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
+1. **Scan** — every category is counted, including the ones that come back empty.
+2. **Plan** — a table of what moves, what gets approximated, and what cannot move at all.
+3. **Approve** — **nothing is written before you say yes.** Expect further prompts from your
+   editor before it writes `settings.json` and friends; that is your tool protecting you, not the
+   migration misbehaving.
+4. **Apply** — existing settings are merged, never overwritten. Originals are copied to
+   `.migrate/<run-id>/backup/` first.
+5. **Report** — `<target>/.migrate/<run-id>/migration-report.md` records what moved, what was
+   approximated, and what you have to finish by hand.
 
-### Project configuration
+**Changed your mind?** `/open-migrate rollback <run-id>` restores the modified files and removes
+the created ones. It asks before touching anything you edited after the migration, and the
+rollback report names the manual steps it *cannot* undo.
 
-Repositories carry their own configuration — `CLAUDE.md`, `.claude/`, `.codex/`, `.cursor/rules/`, and so on. Name a project and it migrates that too.
+---
+
+## What it will not do
+
+- **Move credentials.** `auth.json`, API keys, and credential files are never read, let alone
+  copied. A secret found inside a config value becomes `<REDACTED-REENTER>`, and the report names
+  the key and where it came from — never the value.
+- **Register MCP servers.** Deliberately out of scope: adding a server changes what your editor
+  can reach, and server definitions routinely carry API keys. Servers found are counted and named
+  so you can move them yourself.
+- **Change your automation level.** Approval policy and sandbox mode have a matching concept in
+  every tool but not a matching meaning, so you get a suggestion and nothing is applied.
+- **Delete anything.** Not in the source, not in the target. Same-name skills and subagents are
+  skipped and reported rather than overwritten.
+- **Migrate twice.** `.migrate/ledger.json` records a checksum per source file, so re-running is
+  safe.
+
+Also not portable: model names, keybindings, session history, and settings your tool keeps in
+your account rather than on disk — Cursor's User Rules, for instance. Those land in the report
+with their original text so you can paste them in.
+
+---
+
+## Where loss happens
+
+Permission models differ in expressiveness, so approximation is unavoidable. The report labels
+every one of these under "Approximated" or "Manual action required".
+
+- **Cursor has no `ask` tier.** Rules that mean "ask me" go to neither allow nor deny — both
+  would distort the intent — and are handed back as manual actions.
+- **Codex permissions are an argv-prefix DSL.** Most real rules cannot become a target pattern:
+  on the machine this was measured against, 353 rules yielded 104 conversions. The other 249 hold
+  quotes, parentheses, or whitespace that a pattern cannot express, and are reproduced verbatim
+  in the report rather than mangled into rules that match nothing.
+- **Some hook matchers merge many-to-one.** Claude's `Edit` and `Write` both become Cursor's
+  `Write`; the reverse cannot be unique, so it is restored as `Edit|Write`.
+- **Cursor has nowhere to inject environment variables.** Key names and their source locations
+  are recorded so you can move them yourself.
+
+---
+
+## Project configuration
+
+Repositories carry their own settings — `CLAUDE.md`, `.claude/`, `.codex/`, `.cursor/rules/`.
+Name a project and it migrates that too.
 
 ```
 migrate my codex settings, and the project config in ~/code/my-app too
 ```
 
-Project scope differs from home scope in three ways worth knowing.
+Three things differ from home scope:
 
-- **Source and target are the same directory.** `<repo>/.codex/` becomes `<repo>/.claude/` in place.
-- **The diff is usually tracked by git.** The report tells you which files git tracks — and, in a monorepo, which repository answered — so you can see what a push would share with your team. The migration never stages or commits anything.
-- **Each project keeps its own ledger** at `<repo>/.migrate/ledger.json`, so re-running is safe per project.
+- **Source and target share one directory.** `<repo>/.codex/` becomes `<repo>/.claude/` in place.
+- **The diff is usually tracked by git.** The report says which files git tracks — and in a
+  monorepo, which repository answered — so you can see what a push would share with your team. It
+  never stages or commits anything.
+- **Each project keeps its own ledger,** so re-running is safe per project.
 
-Or ask for all of them:
+You can also ask for every project on the machine. Discovery presents the full list before
+anything is written, and **nothing is scanned unless you ask** — naming one project touches only
+that one.
 
-```
-migrate my codex settings, including every project on this machine
-```
+Two surfaces get called out in the report: Codex ignores a project's `.codex/` layer unless your
+home config trusts that path (you get the exact TOML, but trusting a repo is your decision), and
+`.agents/skills/` is a shared path Cursor and Grok already read, so it is reported rather than
+duplicated.
 
-Discovery scans the home directory to depth 5 and excludes what is not a project: every dotdirectory directly under the home (that is where plugin caches and tool state live), `node_modules`, `Library`, `.Trash`, and repository internals. On the machine this was measured against, that turns 38 raw matches into 17 real projects.
+---
 
-**Being a git repository is not the test** — 13 of the 25 git repositories found were plugin marketplace clones, which are themselves repos. Git status is reported, never used to decide.
+## Is it actually tested?
 
-You see the full list before anything is written, and approve the set at once. Nested projects count separately: a package inside a monorepo that carries its own config gets its own migration and its own ledger.
+Yes, and the numbers are measured rather than claimed. All twelve directions pass a deterministic
+verifier — 51 to 81 checks each — after really migrating a fixture. An empty target fails 43 of
+them, so the verifier is not rubber-stamping.
 
-Nothing is discovered unless you ask for it. Name one project and only that one is touched.
+What makes that affordable: there are **no per-direction converters**. Each tool has one
+knowledge doc — how to read it, how to write into it — and a direction is just one doc paired
+with another. Four fixtures and four verifiers cover all twelve.
 
-Two surfaces need extra care and the report calls both out.
+See **[docs/verification.md](docs/verification.md)** for the per-direction table, the dry run
+against a real 353-rule Codex config, and what is still uncovered.
 
-- **Codex project config is trust-gated.** Codex ignores a project's `.codex/` layer unless `~/.codex/config.toml` trusts that path. The report gives you the exact TOML to add; the migration will not add it for you, because trusting a repository is your decision.
-- **`.agents/skills/` is already shared.** Cursor and Grok read that vendor-neutral path natively, so skills there are reported as "already being read" rather than copied. Claude and Codex do not read it, so for those targets it migrates — and since the original is never deleted, the report names any skill that ends up visible twice.
+---
 
-## Verified directions
+## How this compares
 
-Each direction was scored by a deterministic verifier after actually migrating a fixture. These are measured results.
+Codex CLI ships its own `/import`, which pulls *into* Codex from Cursor and Claude Code. Where it
+applies, it is first-party and you should probably use it.
 
-**All twelve directions pass.**
+open-migrate covers what that does not: migrating **out of** Codex, and migrating **into** Cursor
+or Grok Build. It also works at a different level — home scope plus project scope, explicit
+secret handling, an approval gate, a loss report, and rollback.
 
-| From \ To | Claude | Codex | Cursor | Grok |
-|---|---|---|---|---|
-| **Claude** | — | 56 | 55 | 63 |
-| **Codex** | 77 | — | 73 | 81 |
-| **Cursor** | 54 | 51 | — | 56 |
-| **Grok** | 56 | 53 | 55 | — |
-
-The numbers are how many checks that direction runs, and every one of them passes.
-
-The Codex-source directions run noticeably more checks than the others. That fixture carries the
-cases a real `~/.codex` turned up: three argv-prefix rules that cannot become target permissions
-(one holding a quote and parentheses, one holding whitespace, one whose joined form runs past 200
-characters), a hook field outside the shared structure, a native Codex tool-name matcher, a hook
-command pointing into Codex's own directory, a secret-shaped environment value, and a
-digest-shaped one. Each has a check asserting the rule was honored *and* that the report says so
-— skipping something silently fails just as loudly as converting it wrong.
-
-What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
-
-Project scope is verified separately at 36 checks, and an empty target still fails 27 of them, so the verifier is not passing everything by default.
-
-One gap is open and not counted as covered: a **Cursor source** has no secret-report coverage. Its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into, so the gap is structural rather than an omission. Every other source carries a secret-shaped value and a check that its key name reaches the report.
-
-To run it yourself, seed a target first and then migrate into it:
-
-```
-./scripts/seed-target.sh claude /tmp/t          # the pre-migration state
-/open-migrate codex claude                      # migrate, pointing the destination at /tmp/t
-./scripts/verify-migration.sh /tmp/t claude codex
-```
-
-The seed step matters. Half the checks assert that content already on the target survived the
-merge, and against an empty directory those pass for the wrong reason. Seeding is also what makes
-the suite runnable from a clean checkout — the target directories themselves are not committed.
-Running the verifier against a seed alone should fail: 41 to 51 checks, depending on the tool.
-
-## How this relates to Codex CLI's `/import`
-
-Codex CLI ships its own importer, which pulls from Cursor and Claude Code into Codex. Where it
-applies it is first-party and you should probably use it.
-
-This tool covers what that does not: migrating **out of** Codex, and migrating **into** Cursor or
-Grok Build from anywhere. It also works at a different level — home-scope configuration plus
-project scope, explicit secret handling, an approval gate before any write, a loss report, and
-rollback.
-
-## What can move
-
-| | Claude Code | Codex CLI | Cursor | Grok Build |
-|---|---|---|---|---|
-| Global rules | `CLAUDE.md` | `AGENTS.md` | account-stored — manual | `AGENTS.md` |
-| Skills | yes | yes | yes | yes |
-| Subagents | yes | yes | yes | yes |
-| Commands / prompts | `commands/` | `prompts/` | as a skill | as a skill |
-| Hooks | yes | yes | yes | yes |
-| Permissions | allow / ask / deny | argv-prefix DSL | allow / deny — no ask | allow / ask / deny |
-| Env injection | yes | yes | **no surface** | yes |
-| Approval policy | suggestion only | suggestion only | suggestion only | suggestion only |
-| MCP servers | out of scope | out of scope | out of scope | out of scope |
-| Credentials | never | never | never | never |
-
-A cell says where the category lands, not that the conversion is lossless. "Where loss happens"
-below names the gaps that survive conversion.
-
-## What is not migrated
-
-**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an injected environment variable, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
-
-Also not migrated:
-
-- **MCP servers** — deliberately out of scope. Registering a server changes what the destination tool can reach on your machine, and a server definition routinely carries an API key. The report counts every server it finds and names each one with its source location so you can move them yourself.
-
-- **Model settings** — model names differ per tool. The current value is quoted in the report as guidance only.
-- **Approval policy and sandbox** — a corresponding concept exists but its meaning differs, so nothing is applied automatically. You get a suggestion.
-- **Keybindings, session history, app state** — either not configuration or not portable.
-- **Account-stored settings** — things that do not live on disk, such as Cursor's User Rules, go into the manual-action list with their original text so you can paste them in.
-
-## Where loss happens
-
-Permission models differ in expressiveness, so approximation is unavoidable.
-
-- Cursor has no `ask` tier. Another tool's ask rules go into neither allow nor deny (both distort the original meaning) — they are handed off as manual actions.
-- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP-tool rules. Those are passed through verbatim instead of converted.
-- Cursor has no global env injection surface. The key names and their source locations are recorded so you can move them yourself.
-- Some hook tool matchers merge many-to-one (Claude `Edit` and `Write` → Cursor `Write`). The reverse has no unique restoration, so it is restored as `Edit|Write`.
-
-All of these land in the report's "Approximated" or "Manual action required" section, together with exactly what was lost and how.
-
-## Safety guarantees
-
-- **No writes before approval.** Nothing is touched until you approve the plan table in the Confirm step.
-- **Merge, never overwrite.** Existing settings are not deleted. Originals are copied to `.migrate/<run-id>/backup/` before modification, and if parsing fails after a write, the backup is restored and the run stops.
-- **Safe to re-run.** `.migrate/ledger.json` records the sha256 of every migrated source file, so running the same migration again does not merge anything twice.
-- **Undoable.** Every run writes `.migrate/<run-id>/changes.json` listing what it modified and what it created. `/open-migrate rollback <run-id>` restores the modified files from the backup and removes the created ones, asking first about anything you edited after the run. Manual actions you carried out yourself are named in the rollback report as things it could not undo.
-- **Name collisions are skipped.** If the target already has a skill or subagent with the same name, it is left alone and recorded in the report.
-
-## Development
-
-`skills/` is a **build artifact**. The sources of truth are `adapters/open-migrate/SKILL.md` and `core/`; it is committed because the plugin loader looks for `skills/` at the repository root.
-
-```
-./scripts/build-plugin.sh           regenerate the distribution
-./scripts/build-plugin.sh --check   exit 1 if it drifted from the sources (pre-commit check)
-claude plugin validate . --strict   validate the manifests
-```
-
-After editing `core/` or `adapters/open-migrate/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
-
-**Bump `version` in `.claude-plugin/plugin.json` whenever the content changes.** Plugin managers compare version numbers, not content — `claude plugin update` reports "already at the latest version" and keeps serving the stale cache if the version did not move, no matter how much the files changed.
-
-**Do not keep the plugin enabled while developing.** With both installed, two skills named `migrate` exist — the fresh one from `./install.sh` and the plugin's cache, which lags behind until you push, bump, and update. Which one loads is not predictable, and the stale copy silently lacks whatever you just wrote. Disable the plugin for the duration:
-
-```
-claude plugin disable open-migrate@migrate-marketplace   # develop against ./install.sh
-claude plugin enable open-migrate@migrate-marketplace    # restore when done
-```
-
-This bit us during development: an end-to-end test loaded the plugin cache instead of the freshly installed docs and only passed because the agent noticed the staleness on its own.
-
-To add a new tool, fill in `core/tools/_template.md` to create its knowledge doc, then add one fixture, one target verifier, and one source check. Nothing is built per direction.
+---
 
 ## Known limitations
 
-- **Grok Build has not been verified on a real install.** The development environment has no Grok Build, so installation into `~/.grok/skills/open-migrate` was confirmed but whether Grok actually loads the skill was not. The file conversion itself is verified by the direction suite in both directions.
-- The knowledge docs reflect each tool's config surface as of August 2026. If a tool changes its format, the corresponding doc needs updating.
-- The similarly named community CLI `superagent-ai/grok-cli` stores its configuration somewhere else entirely (`~/.grok/user-settings.json`). This tool targets xAI's official **Grok Build** only and distinguishes the two during detection.
+- **Grok Build has not been verified on a real install.** The development machine has no Grok
+  Build, so the files land in the right place but whether Grok loads them was never confirmed.
+  The conversion itself is verified in both directions.
+- The tool docs describe each editor's config surface **as of August 2026**. If a tool changes
+  its format, its doc needs updating.
+- The similarly named community CLI `superagent-ai/grok-cli` keeps its config somewhere else
+  entirely. This targets xAI's official **Grok Build**, and tells the two apart during detection.
+
+---
+
+## Contributing
+
+Adding a tool costs one knowledge doc, one fixture, and one verifier — and buys eight new
+directions. See **[docs/development.md](docs/development.md)**.
 
 ## License
 
