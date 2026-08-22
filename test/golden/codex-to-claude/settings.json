@@ -1,0 +1,90 @@
+{
+  "model": "claude-fable-5",
+  "env": {
+    "EXISTING_KEY": "keep",
+    "FIXTURE_FLAG": "1",
+    "SERVICE_API_KEY": "<REDACTED-REENTER>",
+    "TRUSTED_CLIENT_SHA256S": "02aa45f33f6384022cfc3e1045ad58ac1af9db9b095d259367f3a3fb6aaf33a7"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(git status:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:*)"
+    ],
+    "deny": [
+      "Bash(rm:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo existing-pre"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo pre-edit-check",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo pre-read",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo notify"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dev/.codex/hooks/notify.sh session-start"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|Grep|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo post-tool",
+            "timeout": 8
+          }
+        ]
+      }
+    ]
+  }
+}
