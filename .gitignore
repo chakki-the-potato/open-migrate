@@ -1,4 +1,5 @@
-test/tmp/
+.DS_Store
 .playwright-mcp/
 image/
-.DS_Store
+node_modules/
+test/tmp/

@@ -123,6 +123,38 @@ jobs:
           probe claude-project claude codex  project
           exit $fail
 
+      - name: npx installer puts the payload in place
+        run: |
+          # The installer is the only thing between a user and the docs, and it ships to a
+          # different registry than the plugin does. Check it against an isolated home.
+          export GROK_HOME="$(mktemp -d)/grok"
+          node bin/open-migrate.js grok
+          test -f "$GROK_HOME/skills/open-migrate/SKILL.md"
+          test -f "$GROK_HOME/skills/open-migrate/core/procedure.md"
+          diff -r skills/open-migrate "$GROK_HOME/skills/open-migrate"
+
+          # A pre-rename install must be removed, or it keeps answering to /migrate with a
+          # copy that never receives updates.
+          mkdir -p "$GROK_HOME/skills/migrate"
+          node bin/open-migrate.js grok > /dev/null
+          if [ -d "$GROK_HOME/skills/migrate" ]; then
+            echo "superseded /migrate install was not removed"; exit 1
+          fi
+
+          # An unknown tool name must fail rather than guessing.
+          if node bin/open-migrate.js windsurf 2>/dev/null; then
+            echo "unknown tool name was accepted"; exit 1
+          fi
+          echo "installer behaves"
+
+      - name: Packaged contents are only what ships
+        run: |
+          files=$(npm pack --dry-run --json | node -p "JSON.parse(require('fs').readFileSync(0))[0].files.map(f=>f.path).join('\n')")
+          echo "$files"
+          if echo "$files" | grep -qE '^(test|docs|scripts)/'; then
+            echo "::error::fixtures, docs, or scripts leaked into the npm package"; exit 1
+          fi
+
       - name: Seed refuses a real tool home
         run: |
           mkdir -p "$HOME/.claude"

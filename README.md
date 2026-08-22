@@ -3,6 +3,7 @@
 **Switching AI coding tools? Take your settings with you.**
 
 [![ci](https://github.com/chakki-the-potato/open-migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/chakki-the-potato/open-migrate/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/open-migrate.svg)](https://www.npmjs.com/package/open-migrate)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 You cancelled Codex and paid for Claude. Your rules, skills, subagents, hooks, and permissions
@@ -35,48 +36,53 @@ A cell says where a category lands, not that the conversion is lossless.
 
 ## Quickstart
 
-### 1. Install
+Two steps: one in your terminal, one inside the tool.
 
-One install usually covers all four tools — Grok and Cursor also read Claude's and Codex's skill
-directories.
-
-<details open>
-<summary><b>Claude Code</b> — plugin (recommended)</summary>
+### 1. Install the skill
 
 ```
-/plugin marketplace add chakki-the-potato/open-migrate
-/plugin install open-migrate@migrate-marketplace
+npx open-migrate
 ```
 
-Restart, then invoke it as `/open-migrate:open-migrate`. A plugin always answers to
-`<plugin>:<skill>`; both names are `open-migrate` here, so it appears twice. That is the
-namespace, not a typo.
+It asks which tool, then puts the skill where that tool will find it. Works the same for all
+four — Node 18+ is the only requirement.
 
-Want the short `/open-migrate`? Install it as a personal skill instead — clone the repo and run
-`./install.sh claude`, keeping the plugin disabled. You then update with
-`git pull && ./install.sh claude`. **Do not run both:** two skills of one name in one home, and
-which one loads is not predictable.
-</details>
+```
+npx open-migrate claude     skip the question
+npx open-migrate --all      every tool present on this machine
+```
+
+**This copies documentation. It does not migrate anything yet.**
 
 <details>
-<summary><b>Codex CLI</b> — plugin</summary>
+<summary>Prefer a plugin? (Claude Code and Codex CLI only)</summary>
+
+The plugin route gives you automatic updates, at the cost of a longer command name.
 
 ```
+# Claude Code, inside a session
+/plugin marketplace add chakki-the-potato/open-migrate
+/plugin install open-migrate@migrate-marketplace
+
+# Codex CLI, from the shell
 codex plugin marketplace add https://github.com/chakki-the-potato/open-migrate
 codex plugin add open-migrate@migrate-marketplace
 ```
 
-Codex has no `plugin update`; to upgrade, refresh the marketplace snapshot and add it again.
+A plugin answers to `<plugin>:<skill>`, so it becomes `/open-migrate:open-migrate` — the
+namespace, not a typo. Cursor and Grok Build have no plugin manager; use `npx` for those.
+
+**Do not install both ways in one tool.** Two skills of the same name, and which one loads is
+not predictable.
 </details>
 
 <details>
-<summary><b>Cursor / Grok Build</b> — install script</summary>
+<summary>Prefer a clone?</summary>
 
 ```
 git clone https://github.com/chakki-the-potato/open-migrate.git
 cd open-migrate
-./install.sh cursor    # → ~/.cursor/skills/open-migrate
-./install.sh grok      # → ~/.grok/skills/open-migrate  (honors GROK_HOME)
+./install.sh claude      # or codex / cursor / grok
 ```
 </details>
 
@@ -87,6 +93,8 @@ subscription changes nothing — but a deleted `~/.codex` leaves nothing to migr
 clean up after.
 
 ### 3. Run it
+
+Restart the tool first, then:
 
 ```
 /open-migrate                  ask which tools
