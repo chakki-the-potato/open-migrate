@@ -245,7 +245,12 @@ before it touches anything, and can be undone afterwards. Different problem, dif
 ## Contributing
 
 Adding a tool costs one knowledge doc, one fixture, and one verifier — and buys eight new
-directions. See **[docs/development.md](docs/development.md)**.
+directions.
+
+Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — it covers what is in scope, and the three
+things that break otherwise-correct pull requests. **[docs/development.md](docs/development.md)**
+has the repository layout. Vulnerabilities go through **[SECURITY.md](SECURITY.md)**, not the
+issue tracker.
 
 ## License
 
