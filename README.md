@@ -12,10 +12,12 @@ you moved to — showing you a plan first, and letting you undo it after.
 
 Works between **Claude Code, Codex CLI, Cursor, and Grok Build**, in any of the 12 directions.
 
-![The plan step: every category counted, with what cannot be converted named rather than hidden](docs/assets/plan.png)
+![The scan summary that opens a run: every category counted, with what cannot be converted named rather than hidden](docs/assets/plan.png)
 
-<sub>The plan from the frozen `codex → claude` run in
-[`test/golden/codex-to-claude`](test/golden/codex-to-claude). Every number is in that report.</sub>
+<sub>The scan summary from the frozen `codex → claude` run in
+[`test/golden/codex-to-claude`](test/golden/codex-to-claude) — every number is in that report. The
+plan that follows lists each item on its own row, with the converted result or the reason it cannot
+convert.</sub>
 
 ---
 
