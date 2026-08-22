@@ -12,6 +12,11 @@ you moved to — showing you a plan first, and letting you undo it after.
 
 Works between **Claude Code, Codex CLI, Cursor, and Grok Build**, in any of the 12 directions.
 
+![The plan step: every category counted, with what cannot be converted named rather than hidden](docs/assets/plan.png)
+
+<sub>The plan from the frozen `codex → claude` run in
+[`test/golden/codex-to-claude`](test/golden/codex-to-claude). Every number is in that report.</sub>
+
 ---
 
 ## What moves
@@ -120,13 +125,11 @@ codex plugin marketplace remove migrate-marketplace
 ```
 </details>
 
-### 2. Do not delete the old tool's directory yet
+> **Do not delete the old tool's directory yet.** open-migrate reads files from disk and never
+> launches the source tool, so a cancelled subscription changes nothing — but a deleted `~/.codex`
+> leaves nothing to migrate. Move first, clean up after.
 
-open-migrate reads files from disk and never launches the source tool, so a cancelled
-subscription changes nothing — but a deleted `~/.codex` leaves nothing to migrate. Move first,
-clean up after.
-
-### 3. Run it
+### 2. Run it
 
 Restart the tool first, then:
 
