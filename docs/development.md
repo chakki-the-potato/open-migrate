@@ -13,9 +13,14 @@ core/
 adapters/open-migrate/SKILL.md    the entry point
 
 skills/            BUILD ARTIFACT — generated from adapters/ and core/
-scripts/           build, install, seed, verify
-test/fixtures/     one source fixture per tool
+scripts/           build, install, seed, verify, freeze
 scripts/checks/    one target verifier and one source check per tool
+test/fixtures/     one source fixture per tool
+test/golden/       frozen migration output, one tree per direction
+test/golden/manifest.json   pins each tree to the hashes of the docs that produced it
+
+bin/open-migrate.js   the npx installer
+package.json          the npm release surface
 ```
 
 There are **no per-direction converters**. A direction is one tool's read rules paired with
