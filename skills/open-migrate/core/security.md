@@ -15,7 +15,7 @@ Treat a value as a secret when any of these hold.
 
 - The key name is auth-related: `*key*`, `*token*`, `*secret*`, `*password*`, `Authorization`, `X-API-Key`, and similar.
 - The value starts with a known key prefix: `sk-`, `ghp_`, `xoxb-`, `AKIA`, and similar.
-- It is a high-entropy string of 20+ characters inside an MCP server's `env` / `headers` / `http_headers`. Exclude values whose shape makes them obviously not secrets, such as absolute paths, URLs, or directory lists. When you cannot tell, do not print the value — put **only the key name** in the manual-action list and let the user decide.
+- It is a high-entropy string of 20+ characters inside any env block, header table, or hook command. Exclude values whose shape makes them obviously not secrets, such as absolute paths, URLs, or directory lists. When you cannot tell, do not print the value — put **only the key name** in the manual-action list and let the user decide.
 
 **Digests are not credentials.** A hash, checksum, or fingerprint is high-entropy by construction and will trip the rule above, but redacting one breaks a working setting for no gain — it is a public identifier, not a secret, and the user has to dig it up again to restore it. Treat a value as a digest, and migrate it as-is, when it is hexadecimal or base64 of a standard digest length (32/40/64/128 hex characters for md5/sha1/sha256/sha512), **and** its key names the algorithm or its purpose — `..._SHA256S`, `*_CHECKSUM`, `*_FINGERPRINT`, `*_HASHES`. Both conditions must hold; a 64-character hex value under a key called `TOKEN` is still a secret.
 

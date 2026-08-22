@@ -9,10 +9,6 @@ chk "project rule 2 migrated"         grep -qF "Never touch the generated/ direc
 chk "merge heading present"           grep -q "^## Migrated from codex" "$TARGET/CLAUDE.md"
 chk "per-file subheading present"     grep -q "^### AGENTS.md" "$TARGET/CLAUDE.md"
 
-# Project MCP goes to .mcp.json, never to the home-scope CLI.
-chk ".mcp.json valid JSON"            jq -e . "$TARGET/.mcp.json"
-chk "project MCP server migrated"     jq -e '.mcpServers.projsvc.command == "npx"' "$TARGET/.mcp.json"
-chk "project MCP env carried"         jq -e '.mcpServers.projsvc.env.PROJECT_FLAG == "1"' "$TARGET/.mcp.json"
 
 # Project hooks go into .claude/settings.json, converted from the Codex matcher.
 chk "project settings valid JSON"     jq -e . "$TARGET/.claude/settings.json"
@@ -31,7 +27,7 @@ chk_not "no model at project scope"   jq -e '.model' "$TARGET/.claude/settings.j
 chk_not "no defaultMode at project"   jq -e '.permissions.defaultMode' "$TARGET/.claude/settings.json"
 
 # Backup of anything pre-existing that got modified.
-claude_proj_backup="$(find_run_artifact backup/CLAUDE.md)"
+claude_proj_backup="$(find_original_artifact backup/CLAUDE.md)"
 : "${claude_proj_backup:=$TARGET/.migrate/__missing__/backup/CLAUDE.md}"
 chk "backup of pre-existing CLAUDE.md" test -f "$claude_proj_backup"
 chk "backup is the original"           grep -qF "Keep this project note." "$claude_proj_backup"

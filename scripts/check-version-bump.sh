@@ -10,7 +10,7 @@
 set -uo pipefail
 
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$repo_dir"
+cd "$repo_dir" || { echo "FAIL: cannot enter the repository at $repo_dir" >&2; exit 1; }
 base="${1:-origin/main}"
 
 if ! git rev-parse --verify --quiet "$base" >/dev/null; then

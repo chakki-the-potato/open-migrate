@@ -1,6 +1,6 @@
 # open-migrate
 
-Move your settings in one step when you switch AI coding tools. It reads rules, MCP servers, skills, subagents, hooks, and permissions from the source tool and converts them into the destination tool's format.
+Move your settings in one step when you switch AI coding tools. It reads rules, skills, subagents, hooks, permissions, and environment variables from the source tool and converts them into the destination tool's format.
 
 Four tools are supported — **Claude Code, Codex CLI, Cursor, and Grok Build** — for 12 possible directions.
 
@@ -17,6 +17,13 @@ adapters/*/SKILL.md per-tool entry points (thin shells that differ only in desti
 ```
 
 ## Install
+
+**One install usually covers all four tools.** Grok Build reads `~/.claude/skills/` and
+`~/.codex/skills/`, and Cursor reads `.claude/skills/` and `.codex/skills/`, so a plugin
+installed for Claude Code shows up in Grok and Cursor as well — namespaced
+`/open-migrate:open-migrate`. Install it once for the tool you already have, and reach for the
+install script only when you want an entry point whose destination is fixed. The caution below
+explains when that matters.
 
 ### Claude Code and Codex CLI — plugin
 
@@ -103,11 +110,20 @@ Grok Build reads `~/.claude/skills/` and `~/.codex/skills/`, and Cursor reads `.
 
 Prefer the entry point installed for the tool you are actually using. The plugin distribution determines its destination at runtime and asks rather than guessing when it cannot confirm which tool it is running in — but the destination-specific entry point from `./install.sh <dest>` has its destination fixed, so it cannot be confused at all.
 
+## Before you start
+
+**Do not delete the source tool's configuration directory.** This tool reads files from disk —
+it never launches the source tool — so an expired subscription or an uninstalled CLI changes
+nothing. But `~/.codex`, `~/.cursor`, and `~/.grok` often get cleaned up in the same sitting as
+the cancellation, and once the directory is gone there is nothing left to migrate. Move the
+settings first, then clean up.
+
 ## Usage
 
 ```
 /open-migrate                  ask which tools
 /open-migrate codex claude     source first, then destination
+/open-migrate rollback         list runs and undo one
 ```
 
 Both tools are inputs, so the direction is never in doubt — and you can migrate **into a tool you have not installed yet.** Running inside Claude, you can prepare a `~/.grok` before you switch to Grok, which is usually the order people actually do it in.
@@ -116,7 +132,7 @@ Natural language works as well: "move my codex settings into claude" carries the
 
 A run shows you a plan table and **writes nothing until you approve it.** After approval, `<target home>/.migrate/<run-id>/migration-report.md` records what moved and how.
 
-Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `.mcp.json`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
+Expect approval prompts beyond that one. Settings files are sensitive by nature, so the host tool asks before writing `settings.json`, `config.toml`, and similar — that is the tool protecting you, not the migration misbehaving. Approving each is normal; declining one leaves that category unmigrated and noted in the report.
 
 ### Project configuration
 
@@ -159,34 +175,75 @@ Each direction was scored by a deterministic verifier after actually migrating a
 
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
-| **Claude** | — | 54 | 57 | 61 |
-| **Codex** | 71 | — | 65 | 69 |
-| **Cursor** | 59 | 50 | — | 55 |
-| **Grok** | 61 | 52 | 58 | — |
+| **Claude** | — | 54 | 53 | 61 |
+| **Codex** | 70 | — | 66 | 74 |
+| **Cursor** | 52 | 49 | — | 54 |
+| **Grok** | 54 | 51 | 53 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
 
-The three Codex-source directions run seven checks more than the others. The Codex fixture's
-rules file carries three argv-prefix rules that cannot become target permissions — one holding
-a quote and parentheses, one holding whitespace, one whose joined form runs past 200
-characters — and those checks assert that each is kept out of the target's permission list and
-named verbatim in the report instead.
+The Codex-source directions run noticeably more checks than the others. That fixture carries the
+cases a real `~/.codex` turned up: three argv-prefix rules that cannot become target permissions
+(one holding a quote and parentheses, one holding whitespace, one whose joined form runs past 200
+characters), a hook field outside the shared structure, a native Codex tool-name matcher, a hook
+command pointing into Codex's own directory, a secret-shaped environment value, and a
+digest-shaped one. Each has a check asserting the rule was honored *and* that the report says so
+— skipping something silently fails just as loudly as converting it wrong.
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
-Project scope is verified separately at 30 checks, and an empty target still fails 24 of them, so the verifier is not passing everything by default.
+Project scope is verified separately at 34 checks, and an empty target still fails 27 of them, so the verifier is not passing everything by default.
 
-To run it yourself:
+One gap is open and not counted as covered: a **Cursor source** has no secret-report coverage. Its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into, so the gap is structural rather than an omission. Every other source carries a secret-shaped value and a check that its key name reaches the report.
+
+To run it yourself, seed a target first and then migrate into it:
 
 ```
-./scripts/verify-migration.sh <target root> <target tool> <source tool>
+./scripts/seed-target.sh claude /tmp/t          # the pre-migration state
+/open-migrate codex claude                      # migrate, pointing the destination at /tmp/t
+./scripts/verify-migration.sh /tmp/t claude codex
 ```
+
+The seed step matters. Half the checks assert that content already on the target survived the
+merge, and against an empty directory those pass for the wrong reason. Seeding is also what makes
+the suite runnable from a clean checkout — the target directories themselves are not committed.
+Running the verifier against a seed alone should fail: 41 to 51 checks, depending on the tool.
+
+## How this relates to Codex CLI's `/import`
+
+Codex CLI ships its own importer, which pulls from Cursor and Claude Code into Codex. Where it
+applies it is first-party and you should probably use it.
+
+This tool covers what that does not: migrating **out of** Codex, and migrating **into** Cursor or
+Grok Build from anywhere. It also works at a different level — home-scope configuration plus
+project scope, explicit secret handling, an approval gate before any write, a loss report, and
+rollback.
+
+## What can move
+
+| | Claude Code | Codex CLI | Cursor | Grok Build |
+|---|---|---|---|---|
+| Global rules | `CLAUDE.md` | `AGENTS.md` | account-stored — manual | `AGENTS.md` |
+| Skills | yes | yes | yes | yes |
+| Subagents | yes | yes | yes | yes |
+| Commands / prompts | `commands/` | `prompts/` | as a skill | as a skill |
+| Hooks | yes | yes | yes | yes |
+| Permissions | allow / ask / deny | argv-prefix DSL | allow / deny — no ask | allow / ask / deny |
+| Env injection | yes | yes | **no surface** | yes |
+| Approval policy | suggestion only | suggestion only | suggestion only | suggestion only |
+| MCP servers | out of scope | out of scope | out of scope | out of scope |
+| Credentials | never | never | never | never |
+
+A cell says where the category lands, not that the conversion is lossless. "Where loss happens"
+below names the gaps that survive conversion.
 
 ## What is not migrated
 
-**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an MCP header, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
+**Credentials never move.** API keys, tokens, `auth.json`, and credential files are neither read nor copied. Secrets embedded in config (an API key in an injected environment variable, say) are replaced with `<REDACTED-REENTER>`, and the report records only which key goes where so you can re-enter it.
 
 Also not migrated:
+
+- **MCP servers** — deliberately out of scope. Registering a server changes what the destination tool can reach on your machine, and a server definition routinely carries an API key. The report counts every server it finds and names each one with its source location so you can move them yourself.
 
 - **Model settings** — model names differ per tool. The current value is quoted in the report as guidance only.
 - **Approval policy and sandbox** — a corresponding concept exists but its meaning differs, so nothing is applied automatically. You get a suggestion.
@@ -198,7 +255,7 @@ Also not migrated:
 Permission models differ in expressiveness, so approximation is unavoidable.
 
 - Cursor has no `ask` tier. Another tool's ask rules go into neither allow nor deny (both distort the original meaning) — they are handed off as manual actions.
-- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP rules. Those are passed through verbatim instead of converted.
+- Codex permissions are an argv-prefix DSL that cannot express path, domain, or MCP-tool rules. Those are passed through verbatim instead of converted.
 - Cursor has no global env injection surface. The key names and their source locations are recorded so you can move them yourself.
 - Some hook tool matchers merge many-to-one (Claude `Edit` and `Write` → Cursor `Write`). The reverse has no unique restoration, so it is restored as `Edit|Write`.
 
@@ -209,7 +266,8 @@ All of these land in the report's "Approximated" or "Manual action required" sec
 - **No writes before approval.** Nothing is touched until you approve the plan table in the Confirm step.
 - **Merge, never overwrite.** Existing settings are not deleted. Originals are copied to `.migrate/<run-id>/backup/` before modification, and if parsing fails after a write, the backup is restored and the run stops.
 - **Safe to re-run.** `.migrate/ledger.json` records the sha256 of every migrated source file, so running the same migration again does not merge anything twice.
-- **Name collisions are skipped.** If the target already has a skill, subagent, or MCP server with the same name, it is left alone and recorded in the report.
+- **Undoable.** Every run writes `.migrate/<run-id>/changes.json` listing what it modified and what it created. `/open-migrate rollback <run-id>` restores the modified files from the backup and removes the created ones, asking first about anything you edited after the run. Manual actions you carried out yourself are named in the rollback report as things it could not undo.
+- **Name collisions are skipped.** If the target already has a skill or subagent with the same name, it is left alone and recorded in the report.
 
 ## Development
 

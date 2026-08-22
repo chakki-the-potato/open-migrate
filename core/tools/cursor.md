@@ -1,6 +1,6 @@
 # Cursor (Anysphere)
 
-Home: `~/.cursor`. MCP, skills, subagents, hooks, permissions, and approval policy all live under that home. Rules (`.cursor/rules/*.mdc`), commands (`.cursor/commands/*.md`), and `AGENTS.md` (the migration target) are relative to the project root, not the home directory. Use this doc both when reading Cursor as a source and when writing to it as a target.
+Home: `~/.cursor`. Skills, subagents, hooks, permissions, and approval policy all live under that home. Rules (`.cursor/rules/*.mdc`), commands (`.cursor/commands/*.md`), and `AGENTS.md` (the migration target) are relative to the project root, not the home directory. Use this doc both when reading Cursor as a source and when writing to it as a target.
 
 ## Detection
 
@@ -12,13 +12,12 @@ Consider it installed when `~/.cursor/mcp.json` or `~/.cursor/cli-config.json` e
 |---|---|---|
 | Global rules | `.cursor/rules/*.mdc` (project root) **and** `AGENTS.md` (`~/.cursor/AGENTS.md` plus the project root) | Frontmatter `description`/`globs`/`alwaysApply` followed by a markdown body. Cursor ignores plain `.md` files in the same directory — the official docs tell you to use `AGENTS.md` for plain-markdown rules. Cursor reads `AGENTS.md` and `CLAUDE.md` natively, so **treat `AGENTS.md` as a global-rule source too** — if there are no `.mdc` files at all but an `AGENTS.md` exists, that file is the rule source |
 | User Rules | No local file — stored in the Cursor account (cloud-synced) | Not migratable — manual guidance only |
-| MCP | `mcpServers` in `~/.cursor/mcp.json` | JSON. stdio: `command`/`args`/`env`/`envFile`. remote: `url`/`headers`. Server names may contain spaces. Supports `${env:NAME}` interpolation. No enabled/disabled flag |
 | Skills | `~/.cursor/skills/<name>/SKILL.md` | agent-skills standard layout. Frontmatter: `name`/`description`/`paths`/`disable-model-invocation`/`metadata`. No `$ARGUMENTS` substitution. `~/.cursor/skills-cursor/` is app-managed built-in content — not migratable in either direction |
 | Commands / prompts | `.cursor/commands/*.md` (project root) | Deprecated — Cursor recommends skills instead |
 | Subagents | `~/.cursor/agents/*.md` | Frontmatter: `name`/`description`/`model`/`readonly`/`is_background` |
 | Hooks | `~/.cursor/hooks.json` | JSON. See "Hook file structure" below — the top-level `hooks` is **an object keyed by camelCase event names**, and each value is a flat array of hook objects (unlike Claude's PascalCase plus `{matcher, hooks:[...]}` nesting) |
 | Permission rules | `permissions.allow` / `permissions.deny` in `~/.cursor/cli-config.json` | Five token types: `Shell(cmd)` / `Read(glob)` / `Write(glob)` / `WebFetch(domain)` / `Mcp(server:tool)`. Argument matching uses colon syntax (for example `curl:*`) |
-| Env injection | No global env surface | Only per-server `env`/`envFile` in `~/.cursor/mcp.json` and `${env:NAME}` interpolation exist |
+| Env injection | No global env surface | Cursor has no place to inject environment variables globally |
 | Approval policy | `approvalMode` in `~/.cursor/cli-config.json` | Values: `allowlist` / `auto-review` / `unrestricted` |
 | Never read | credentials, `state.vscdb`, `projects/`, `extensions/` | security.md applies |
 
@@ -29,13 +28,6 @@ Consider it installed when `~/.cursor/mcp.json` or `~/.cursor/cli-config.json` e
 - `AGENTS.md` (`~/.cursor/AGENTS.md` or the project root) moves the same way. It is a rule surface Cursor reads natively, so treat it as equal to `.mdc` — **never conclude "no rules to migrate" just because there are no `.mdc` files.** If both surfaces exist, migrate both and keep them separated per file.
 - For the merge section and subheading format, follow procedure.md's "Global-rule merge format" (add the `### <filename>` subheading even when there is only one file).
 - User Rules: they do not exist locally, so automatic migration is impossible — leave a note in the report telling the user to check their Cursor account's User Rules and move them over manually.
-
-### MCP
-- `mcpServers.<name>` → the target's MCP format. stdio (`command`/`args`/`env`) and remote (`url`/`headers`) map directly.
-- Never open an `envFile` to inline its values (secret exposure risk) — mark it impossible and record only the path in the report as manual guidance.
-- `${env:NAME}` interpolation is Cursor-specific syntax and no equivalent has been confirmed on the other tools — carry the value over verbatim but flag it for manual review.
-- If a server name contains spaces, the target's naming rules (CLI argument vs. file key) may require quoting — flag for manual review.
-- `env` and `headers` values are subject to security.md secret detection.
 
 ### Skills
 - Copy the `SKILL.md` directory into the target's skill directory as-is.
@@ -128,14 +120,13 @@ These paths can be disabled in the user's settings, so never skip migration auto
 - `approvalMode` → use procedure.md's approximation table as a report suggestion only; never set it automatically.
 
 ### Env injection
-- Cursor has no global env surface — when Cursor is the source there is no global env block to migrate at all (per-server env is already handled by the MCP rules above).
+- Cursor has no global env surface — when Cursor is the source there is no global env block to migrate at all.
 
 ## Write rules (when Cursor is the target)
 
 | Category | Write location | How |
 |---|---|---|
 | Global rules | **There is nowhere to write in home scope** — see below | Cursor has no global rule **file**. The equivalent, User Rules, is stored in the account and cannot be written to disk. Therefore: (a) if the user specifies a project root, merge into that root's `AGENTS.md` as a `## Migrated from <source> (<date>)` section, **verbatim** (never summarize or rewrite, keep `@import` lines as-is, never delete existing content, back up to `.migrate/<run-id>/backup/AGENTS.md` first); (b) if there is no project root, **write nothing** — put the rule text in the manual-action list so the user can paste it into Cursor's User Rules. In neither case write to `.cursor/rules/*.md`, because Cursor ignores plain `.md` |
-| MCP | `mcpServers.<name>` in `~/.cursor/mcp.json` | stdio: `command`/`args`/`env`. remote: `url`/`headers`. **If a server with the same name exists, do not overwrite — skip and record in the report.** Replace secret values with `<REDACTED-REENTER>` and list them under manual action. Do not write Cursor-specific fields (`envFile`, `${env:NAME}` interpolation) since the source has none |
 | Skills | `~/.cursor/skills/<name>/SKILL.md` | Copy the whole directory. **If a skill with the same name exists, skip and record in the report.** Never write into `~/.cursor/skills-cursor/` (app-only area) |
 | Commands | `~/.cursor/skills/<name>/SKILL.md` (migrate as a skill, not a command) | `.cursor/commands/*.md` is deprecated, so exclude it as a write destination; wrap the source command in `name`/`description` frontmatter and write it as a skill. `name` is the source filename without its extension. If the source has no `description`, do not invent one — use the body's first sentence verbatim and record in the report that it was synthesized. The source's `$1`-`$9` / `$ARGUMENTS` substitution tokens have no equivalent in Cursor skills and are therefore **lost** — state this as a loss in the report |
 | Subagents | `~/.cursor/agents/<name>.md` | Write only `name`/`description`/`model`/`readonly`/`is_background` in the frontmatter. When the source is Claude, `tools` and `color` have no corresponding Cursor field — drop and record. **If a file with the same name exists, do not overwrite — skip and record in the report** |
@@ -146,7 +137,7 @@ These paths can be disabled in the user's settings, so never skip migration auto
 
 ## JSON config merge rules
 
-`mcp.json`, `hooks.json`, and `cli-config.json` are all JSON.
+`hooks.json` and `cli-config.json` are both JSON.
 
 1. Copy the original to `.migrate/<run-id>/backup/<filename>` before modifying.
 2. Deep merge: merge objects per key, append to arrays then de-duplicate, preserve existing scalar values. Never resolve same-name collisions (server name, skill name, filename) on your own — confirm with the user during Confirm.
@@ -164,4 +155,4 @@ Read these when Cursor is the source in a project migration; write these when it
 | Commands | `.cursor/commands/*.md` | Deprecated surface; migrate per the write rules above |
 | Vendor-neutral skills | `.agents/skills/<name>/` | **Not listed in any tool's own inventory** — it is a shared project surface. procedure.md's "`.agents/` is shared, not migratable" rule governs it: migrate it when this target does not read the path natively, leave it alone when it does. Never skip it just because it is absent from the table above |
 
-Cursor has no project-scope MCP, permission, or hook file — those live only in the home. When Cursor is the target of a project migration, the source's project-level MCP, permissions, and hooks are not migratable at project scope. Record them in the manual-action list with their source location instead of silently dropping them.
+Cursor has no project-scope permission or hook file — those live only in the home. When Cursor is the target of a project migration, the source's project-level permissions and hooks are not migratable at project scope. Record them in the manual-action list with their source location instead of silently dropping them.

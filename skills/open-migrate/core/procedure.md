@@ -13,7 +13,7 @@ When two docs give different instructions for the same item, resolve it in this 
 
 ## Path resolution in test mode (applies to every tool)
 
-If the target (or source) root is not that tool's real home, you are in test mode. Substitute the root for every home path the tool docs mention — `~/.cursor/mcp.json` becomes `<root>/mcp.json`, `~/.grok/config.toml` becomes `<root>/config.toml`. Files that live **outside** the home directory (such as Claude's `~/.claude.json`) fold **inside** the root: `<root>/.claude.json`.
+If the target (or source) root is not that tool's real home, you are in test mode. Substitute the root for every home path the tool docs mention — `~/.cursor/cli-config.json` becomes `<root>/cli-config.json`, `~/.grok/config.toml` becomes `<root>/config.toml`. Files that live **outside** the home directory (such as Claude's `~/.claude.json`) fold **inside** the root: `<root>/.claude.json`.
 
 **Test mode applies per side, not to the whole run.** A side is in test mode when *its* root is a path you were given rather than that tool's real home. Reading the real `~/.codex` as the source while writing to a temporary destination is a normal and useful shape — a dry run against real configuration — and the source side is simply not in test mode there.
 
@@ -21,7 +21,7 @@ If the target (or source) root is not that tool's real home, you are in test mod
 
 ## Run artifacts (every scope)
 
-Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report, MCP commands) go in `<root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<root>/.migrate/ledger.json`.
+Generate the run-id now, in `YYYYMMDD-HHMMSS` format. This run's artifacts (backups, report) go in `<root>/.migrate/<run-id>/`. The one exception is the ledger `ledger.json`, which is shared across runs and lives at `<root>/.migrate/ledger.json`.
 
 `<root>` is the target root in a home-scope migration and the project root in a project-scope one. This applies to every run, not only to test mode.
 
@@ -115,8 +115,17 @@ The same reasoning applies to any other path a target reads natively — check t
 
 ## Category checklist (walk all of it, every run)
 
-1. Global rules  2. MCP servers  3. Skills  4. Commands/prompts  5. Subagents  6. Hooks
-7. Permission rules  8. Env injection  9. Approval/sandbox policy  10. Non-migratable items (keybindings, sessions, auth, model, etc.)
+1. Global rules  2. Skills  3. Commands/prompts  4. Subagents  5. Hooks
+6. Permission rules  7. Env injection  8. Approval/sandbox policy  9. Non-migratable items (keybindings, sessions, auth, model, MCP servers, etc.)
+
+**MCP servers are deliberately out of scope.** Every supported tool has them, and converting the
+definitions would be easy, but registering a server changes what the target tool can reach on the
+user's machine, and a server definition routinely carries an API key. This tool does neither on the
+user's behalf.
+
+Do not treat that as a reason to stay silent. Count the servers you find, list each one by name and
+source location under "Not migrated", and say plainly that MCP is out of scope so the user knows to
+move them by hand. Silence here reads as "the source had none", which is the one wrong answer.
 
 If the source tool doc's inventory table lists a surface that is missing from this checklist, do not skip it for being absent here — add it as an item, process it, and note it in the report.
 
@@ -160,6 +169,34 @@ Process only approved categories, in this order.
 3. Convert and merge per category, following the target doc's write rules.
 4. Update the ledger: record every source file you actually read this run as `{ "<source file path>": { "sha256": "...", "run": "<run-id>" } }`. Every file you read belongs here regardless of whether it was classified automatic, approximate, or impossible — the next run needs it for change detection. Files forbidden by security.md are never read, not even to compute a hash, so they are not in the ledger. **Files the source tool doc declares out of scope**, whose contents you therefore never opened (Cursor's `skills-cursor/`, Grok's `GROK.md`), stay out for the same reason — the ledger records what you read and migrated, not everything you laid eyes on. Those files get excluded again by the same rule on the next run, so change detection is unnecessary. The key is the source root resolved to an absolute path joined with the file's relative path — one entry per file, in test mode too. Re-migrating the same file overwrites its entry with the latest run info; no history is kept.
 
+5. Write `.migrate/<run-id>/changes.json` — the record of what this run touched, and the
+   only thing that makes the run undoable. Backups alone cannot do it: a backup exists for
+   a file you *modified*, and says nothing about a file you *created*. Rolling back from
+   backups alone restores the modified files and leaves every copied skill, subagent, and
+   command behind.
+
+```json
+{
+  "run": "<run-id>",
+  "root": "<absolute target root>",
+  "modified": ["settings.json", "CLAUDE.md"],
+  "created": ["skills/hello/SKILL.md", "agents/reviewer.md"],
+  "created_dirs": ["skills/hello", "agents"]
+}
+```
+
+   - Paths are **relative to the root**, so moving the target does not break the record.
+   - `modified` lists exactly the files you backed up, and every one of them must have a
+     file of the same name under `backup/`. If the two disagree, say so in the report —
+     rollback will be partial and the user needs to know before they rely on it.
+   - `created` lists files that did not exist before this run. A file you created is not in
+     `modified`, and a file you modified is never in `created`; a path in both means you
+     lost track of which it was, and the honest fix is to record it as `modified`.
+   - `created_dirs` lists directories that did not exist before this run, innermost last, so
+     rollback can remove them in reverse order once their files are gone.
+   - Write the file even when nothing changed. An empty `modified` and `created` is the
+     record that the run was a no-op, and rollback on it correctly does nothing.
+
 If a write fails (JSON parse error and the like): restore that file from the backup, stop the remaining categories, and record the failure point in the report.
 
 ### Hook commands that point into the source tool's home
@@ -200,7 +237,7 @@ Write `.migrate/<run-id>/migration-report.md` and print the same content to the 
 ## Scan summary
 | Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
 |---|---|---|---|---|---|---|
-- Write **all ten** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
+- Write **all nine** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
 - **Skipped** counts items the target already has — a same-name skill, a subagent, an env key with the same value. These are neither failures nor conversions, and forcing them into Impossible misreports a healthy run as a broken one. On a real machine this is often the largest column: 33 subagents skipped because the same plugin is installed on both sides is a normal outcome, not 33 losses.
 - Every row must satisfy `Found = Automatic + Approximate + Suggestion + Skipped + Impossible`. If it does not, a category is missing from your accounting.
 

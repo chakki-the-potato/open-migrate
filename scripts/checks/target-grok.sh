@@ -47,15 +47,7 @@ if [ "$src_has_global_env" = 1 ]; then
 chk "env injected"                     jq -e '.shell_environment_policy.set.FIXTURE_FLAG == "1"' "$grok_toml_json"
 fi
 
-# config.toml — MCP stdio (same table shape as Codex)
-chk "mcp everything command"           jq -e '.mcp_servers.everything.command == "npx"' "$grok_toml_json"
-chk "mcp everything arg: -y"           jq -e '.mcp_servers.everything.args | index("-y") != null' "$grok_toml_json"
-chk "mcp everything arg: package"      jq -e '.mcp_servers.everything.args | index("@modelcontextprotocol/server-everything") != null' "$grok_toml_json"
-chk "mcp everything env"               jq -e '.mcp_servers.everything.env.LOG_LEVEL == "info"' "$grok_toml_json"
 
-# config.toml — MCP remote (the secret must be replaced by the placeholder, never left verbatim)
-chk "mcp secretsvc url"                jq -e '.mcp_servers.secretsvc.url == "https://example.com/mcp"' "$grok_toml_json"
-chk "mcp secretsvc header redacted"    jq -e '.mcp_servers.secretsvc.http_headers."X-API-Key" == "<REDACTED-REENTER>"' "$grok_toml_json"
 
 # Permissions — Grok's rule strings use Claude's syntax, so they must arrive unconverted.
 chk "allow: git status"                jq -e '.permission.allow | index("Bash(git status:*)") != null' "$grok_toml_json"
@@ -107,8 +99,8 @@ chk "agent description carried"        grep -qF "Reviews diffs for style violati
 chk "agent body carried"               grep -qF "strict code reviewer" "$TARGET/agents/reviewer.md"
 
 # Backups (existence + original contents) — security.md's write-safety rules; the filenames are Grok-specific
-grok_backup_agents="$(find_run_artifact backup/AGENTS.md)"
-grok_backup_config="$(find_run_artifact backup/config.toml)"
+grok_backup_agents="$(find_original_artifact backup/AGENTS.md)"
+grok_backup_config="$(find_original_artifact backup/config.toml)"
 : "${grok_backup_agents:=$TARGET/.migrate/__missing__/backup/AGENTS.md}"
 : "${grok_backup_config:=$TARGET/.migrate/__missing__/backup/config.toml}"
 grok_toml_to_json "$grok_backup_config" > "$grok_backup_config_json" || printf '{}' > "$grok_backup_config_json"

@@ -4,14 +4,45 @@
       {
         "matcher": "apply_patch",
         "hooks": [
-          { "type": "command", "command": "echo pre-edit-check", "timeout": 10 }
+          {
+            "type": "command",
+            "command": "echo pre-edit-check",
+            "timeout": 10
+          }
+        ],
+        "statusMessage": "Checking the patch before it lands"
+      },
+      {
+        "matcher": "read_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo pre-read",
+            "timeout": 5
+          }
         ]
       }
     ],
     "Notification": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "echo notify" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo notify"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dev/.codex/hooks/notify.sh session-start"
+          }
+        ]
       }
     ]
   }

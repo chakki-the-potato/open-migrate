@@ -4,8 +4,8 @@
 # Already defined by the caller (verify-migration.sh): TARGET, TOOL, SOURCE,
 # script_dir, chk/chk_not, fail. set -uo pipefail is already in effect.
 # The load order is _common.sh -> target-$TOOL.sh -> source-$SOURCE.sh, so a
-# source-<tool>.sh *can* reference variables created by target-<tool>.sh (mcp_json,
-# for example) — but doing so makes that source file safe only when paired with the
+# source-<tool>.sh *can* reference variables created by target-<tool>.sh — but doing
+# so makes that source file safe only when paired with the
 # target file that creates the variable (any other combination dies on a set -u
 # undefined-variable error). Sticking to the variables this file exports, such as
 # mig_dir, keeps a source file safe against every target — prefer that.
@@ -20,12 +20,13 @@
 #                       Only then may artifacts from an earlier run be accepted.
 #                       When "0", trust mig_dir alone, so a broken newest run
 #                       cannot pass by borrowing an older run's artifacts.
+#   find_original_artifact <path relative to the run dir>
+#                       The earliest backup of that file — the copy that predates every
+#                       run. Use it for "the backup is the original" checks.
 #   find_run_artifact <path relative to the run dir>
 #                       Helper that resolves the path of a point-in-time artifact
 #                       (backup/CLAUDE.md, for example) while honoring
-#                       is_noop_rerun. Artifacts that accumulate across runs
-#                       (mcp-commands.sh) combine differently and do not use this
-#                       helper — those target files consult is_noop_rerun directly.
+#                       is_noop_rerun.
 
 mig_dir="$(ls -d "$TARGET/.migrate/"*/ 2>/dev/null | sort | tail -1)"
 if [ -z "$mig_dir" ]; then
@@ -33,7 +34,7 @@ if [ -z "$mig_dir" ]; then
   mig_dir="$TARGET/.migrate/__missing__/"
 fi
 
-# Per-run artifacts (backups, MCP commands) are looked up in the newest run by default.
+# Per-run artifacts (backups) are looked up in the newest run by default.
 # Artifacts from an earlier run are accepted only when the newest run legitimately created
 # nothing because the ledger skipped everything (the report records "already migrated").
 # Otherwise a broken newest run could pass by borrowing traces from an older one.
@@ -53,6 +54,17 @@ find_run_artifact() {
   fi
 }
 
+# find_original_artifact <path relative to the run dir>
+#   The *pristine* copy of a file, for the checks that assert "the backup is the original".
+#   A backup is written immediately before a file is modified, so the earliest backup of a
+#   given file is the version that predates every run — later backups are snapshots of
+#   already-migrated content. find_run_artifact returns the newest and is right for asking
+#   "what did this run see"; this one is right for asking "what did the target start as".
+find_original_artifact() {
+  local rel="$1"
+  ls "$TARGET/.migrate/"*/"$rel" 2>/dev/null | sort | head -1
+}
+
 # Global rules — override precedence (the decoy must not leak through)
 #
 # Excludes .migrate/ because the report legitimately names the decoy: a run that
@@ -64,13 +76,24 @@ chk_not "AGENTS.override precedence"   grep -rqF --exclude-dir=.migrate "OVERRID
 # The report artifact exists (its contents are verified by the per-target checks)
 chk "report exists"                    test -f "${mig_dir}migration-report.md"
 
+# Run manifest — what makes the run undoable. Backups cover files the run modified and say
+# nothing about files it created, so rollback without this record restores the modified ones
+# and leaves every copied skill and subagent behind while reporting success.
+chk "changes.json exists"              test -f "${mig_dir}changes.json"
+chk "changes.json is valid JSON"       jq -e . "${mig_dir}changes.json"
+chk "changes.json has modified[]"      jq -e '(.modified | type) == "array"' "${mig_dir}changes.json"
+chk "changes.json has created[]"       jq -e '(.created  | type) == "array"' "${mig_dir}changes.json"
+chk "changes.json paths are relative"  jq -e '[.modified[]?, .created[]?, .created_dirs[]?] | all(startswith("/") | not)' "${mig_dir}changes.json"
+chk_not "no path both modified and created" \
+  jq -e '[.modified[]?] as $m | [.created[]?] as $c | ($m - ($m - $c)) | length > 0' "${mig_dir}changes.json"
+
 # Ledger (exists + valid + records sha256 hashes)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
 chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
 chk "ledger records source hashes"     jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | unique | length >= 5' "$TARGET/.migrate/ledger.json"
 
 # Secrets must never leak
-chk_not "no MCP secret leaked"         grep -rqF "FAKE-SECRET-123" "$TARGET"
+chk_not "no config secret leaked"      grep -rqF "FAKE-SECRET-123" "$TARGET"
 chk_not "auth.json never copied"       grep -rqF "AUTH-FAKE-SECRET" "$TARGET"
 
 # ── Which surfaces the source tool actually has ────────────────────────
