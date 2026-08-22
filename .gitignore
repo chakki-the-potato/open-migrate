@@ -1,2 +1,4 @@
 test/tmp/
 .playwright-mcp/
+image/
+.DS_Store
