@@ -140,7 +140,11 @@ are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machi
   `mcp.json`, and MCP is no longer migrated; Cursor has no environment-variable surface to move
   the case into. The gap is structural, not an omission. Every other source carries a
   secret-shaped value and a check that its key name reaches the report.
-- **Grok Build has never been verified on a real install.** The conversion is verified in both
-  directions; whether Grok loads the installed skill was never confirmed.
+- **Grok Build loads the installed skill; no migration has been driven from inside it.** A headless
+  `grok -p` session names `open-migrate` among its skills and returns the description verbatim from
+  `adapters/open-migrate/SKILL.md`, so the install lands somewhere Grok actually reads. What is
+  still unconfirmed is a conversion run from a Grok session rather than against a seeded target.
+  Note that an installed copy goes stale on its own — the one used for this check already lagged
+  `core/procedure.md` by a commit while `SKILL.md` matched.
 - **Codex CLI's full round trip is unverified.** `plugin list` reports it installed and enabled;
   nothing beyond that was checked.
