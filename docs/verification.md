@@ -144,11 +144,12 @@ are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machi
   the case into. The gap is structural, not an omission. Every other source carries a
   secret-shaped value and a check that its key name reaches the report.
 - **Grok Build finds the installed skill; no migration has been driven from inside it.** A
-  headless `grok -p` session lists `open-migrate` among its skills and returns its description,
-  opening verbatim from `adapters/open-migrate/SKILL.md`, so the install lands where Grok looks.
-  That is discovery, not execution: it shows the path is read and the frontmatter parsed, and says
-  nothing about whether `core/*.md` resolves when the skill is actually invoked. Every direction in
-  the table above was driven from another tool, and the conversion itself remains verified in both
-  directions.
+  headless `grok -p` session lists `open-migrate` among its skills and returns the opening of its
+  description verbatim from `adapters/open-migrate/SKILL.md`. The reply stopped before the field's
+  last sentence, and nothing in it distinguishes the model truncating from the parse truncating.
+  Either way it is discovery, not execution: the path is read and the frontmatter parsed, and
+  whether `core/*.md` resolves when the skill is actually invoked is untouched by this. Every
+  direction in the table above was driven from another tool, and the conversion itself remains
+  verified in both directions.
 - **Codex CLI's full round trip is unverified.** `plugin list` reports it installed and enabled;
   nothing beyond that was checked.
