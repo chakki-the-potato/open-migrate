@@ -86,6 +86,10 @@ chk "changes.json has created[]"       jq -e '(.created  | type) == "array"' "${
 chk "changes.json paths are relative"  jq -e '[.modified[]?, .created[]?, .created_dirs[]?] | all(startswith("/") | not)' "${mig_dir}changes.json"
 chk_not "no path both modified and created" \
   jq -e '[.modified[]?] as $m | [.created[]?] as $c | ($m - ($m - $c)) | length > 0' "${mig_dir}changes.json"
+chk "changes.json records after-digests for every written path" \
+  jq -e '([.modified[]?, .created[]?] | sort) == (.after // {} | keys | sort)' "${mig_dir}changes.json"
+chk "after-digests are sha256" \
+  jq -e '(.after // {}) | to_entries | all(.value | test("^[0-9a-f]{64}$"))' "${mig_dir}changes.json"
 
 # Ledger (exists + valid + records sha256 hashes)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"

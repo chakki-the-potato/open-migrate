@@ -80,6 +80,9 @@ if [ -n "$RUN" ]; then
     fi
   fi
 
+  chk "after-digests cover every written path" \
+    jq -e '([.modified[]?, .created[]?] | sort) == (.after // {} | keys | sort)' "$changes"
+
   chk "rollback report written" test -f "$run_dir/rollback-report.md"
 fi
 
