@@ -245,8 +245,8 @@ before it touches anything, and can be undone afterwards. Different problem, dif
 
 ## Known limitations
 
-- **No migration has been driven from inside Grok Build or Codex CLI.** Both load the skill on a
-  real install — a headless `grok -p` session returns part of its description, and
+- **No migration has been driven from inside Grok Build or Codex CLI.** Both find the installed
+  skill — a headless `grok -p` session returns part of its description, and
   `codex debug prompt-input` shows it among the skills Codex hands the model — so the files land
   where each tool reads. Every measured direction was driven from another tool. The conversions
   themselves are verified in both directions.
