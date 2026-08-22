@@ -93,22 +93,31 @@ cd open-migrate
 <details>
 <summary>Removing it</summary>
 
+Removing the skill does not undo a migration. Settings that moved stay where they landed, so run
+`/open-migrate rollback` **first** if you want them back — once the skill is gone you have to
+reinstall it to roll anything back.
+
 Whichever route installed it, the skill is one directory:
 
 ```
-rm -rf ~/.claude/skills/open-migrate     # or ~/.codex, ~/.cursor, ~/.grok
+rm -rf ~/.claude/skills/open-migrate   # or ~/.codex, ~/.cursor, ~/.grok — CODEX_HOME and GROK_HOME apply
 ```
 
-If you installed the plugin instead, remove it through the manager so its cache and marketplace
-entry go too:
+If you installed the plugin instead, remove it through the manager:
 
 ```
 claude plugin uninstall open-migrate@migrate-marketplace
 codex plugin remove open-migrate@migrate-marketplace
 ```
 
-Neither touches a migration you already ran. Settings that moved stay where they landed — use
-`/open-migrate rollback` **before** removing the skill if you want them reverted.
+That takes the installed copy and its cache. The marketplace stays configured, so a later
+`plugin add` brings the plugin back at whatever revision the snapshot holds — which is how the
+stale copy described above survived being deleted. Drop the source too if you are done:
+
+```
+claude plugin marketplace remove migrate-marketplace
+codex plugin marketplace remove migrate-marketplace
+```
 </details>
 
 ### 2. Do not delete the old tool's directory yet
