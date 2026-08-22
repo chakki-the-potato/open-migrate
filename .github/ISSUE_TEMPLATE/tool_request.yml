@@ -1,0 +1,73 @@
+name: Tool support request
+description: Ask for another AI coding tool to be supported.
+labels: ["tool-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding a tool costs one knowledge doc, one fixture, one verifier, and one seed case — and
+        buys eight new directions, because a direction is one tool's read rules paired with
+        another's write rules. See
+        [Adding a tool](https://github.com/chakki-the-potato/open-migrate/blob/main/docs/development.md#adding-a-tool).
+
+        What makes a request actionable is the config surface below. Without it the work starts
+        with someone else installing the tool and reverse-engineering it.
+
+  - type: input
+    id: tool
+    attributes:
+      label: Tool name and homepage
+      description: >
+        Be exact. Several tools share a name — xAI's Grok Build and the community
+        `superagent-ai/grok-cli` keep their config in entirely different places.
+    validations:
+      required: true
+
+  - type: textarea
+    id: paths
+    attributes:
+      label: Where its configuration lives
+      description: Home directory paths, project-level paths, and the file formats.
+      placeholder: |
+        ~/.example/config.toml
+        ~/.example/skills/
+        <repo>/.example/rules/
+      render: text
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: categories
+    attributes:
+      label: Which categories it has
+      options:
+        - label: Global rules or instructions file
+        - label: Skills
+        - label: Subagents
+        - label: Commands or saved prompts
+        - label: Hooks
+        - label: Permissions
+        - label: Environment variable injection
+
+  - type: textarea
+    id: permissions
+    attributes:
+      label: How its permission model works
+      description: >
+        The part that decides how much is lost. Does it have an ask tier? Are rules glob patterns,
+        argv prefixes, or something else? Paste one real rule with any path redacted.
+      render: text
+
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Are you able to write the knowledge doc?
+      description: >
+        It is a filled-in copy of `core/tools/_template.md` — a read inventory and a set of write
+        rules. Knowing the tool matters more than knowing this repository.
+      options:
+        - "Yes, I use this tool and can write it"
+        - "I can test a draft against a real install"
+        - "No, requesting only"
+    validations:
+      required: true

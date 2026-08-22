@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/chakki-the-potato/open-migrate/security/advisories/new
+    about: A path where a secret is read, copied, or printed — or a write outside the approved plan. Private, not a public issue.
+  - name: Contributing guide
+    url: https://github.com/chakki-the-potato/open-migrate/blob/main/CONTRIBUTING.md
+    about: What is in scope, and the three things that break otherwise-correct pull requests.
+  - name: Known limitations
+    url: https://github.com/chakki-the-potato/open-migrate#known-limitations
+    about: Grok Build is unverified on a real install, and some conversion loss is intended. Check here first.
