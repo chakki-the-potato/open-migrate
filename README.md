@@ -108,6 +108,7 @@ Prefer the entry point installed for the tool you are actually using. The plugin
 ```
 /open-migrate                  ask which tools
 /open-migrate codex claude     source first, then destination
+/open-migrate rollback         list runs and undo one
 ```
 
 Both tools are inputs, so the direction is never in doubt — and you can migrate **into a tool you have not installed yet.** Running inside Claude, you can prepare a `~/.grok` before you switch to Grok, which is usually the order people actually do it in.
@@ -218,6 +219,7 @@ All of these land in the report's "Approximated" or "Manual action required" sec
 - **No writes before approval.** Nothing is touched until you approve the plan table in the Confirm step.
 - **Merge, never overwrite.** Existing settings are not deleted. Originals are copied to `.migrate/<run-id>/backup/` before modification, and if parsing fails after a write, the backup is restored and the run stops.
 - **Safe to re-run.** `.migrate/ledger.json` records the sha256 of every migrated source file, so running the same migration again does not merge anything twice.
+- **Undoable.** Every run writes `.migrate/<run-id>/changes.json` listing what it modified and what it created. `/open-migrate rollback <run-id>` restores the modified files from the backup and removes the created ones, asking first about anything you edited after the run. Manual actions you carried out yourself are named in the rollback report as things it could not undo.
 - **Name collisions are skipped.** If the target already has a skill or subagent with the same name, it is left alone and recorded in the report.
 
 ## Development

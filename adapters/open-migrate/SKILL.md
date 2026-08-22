@@ -1,12 +1,25 @@
 ---
 name: open-migrate
-description: Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build) — rules, skills, subagents, hooks, permissions. Use when the user asks to move or import settings from one AI coding tool to another.
+description: Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build) — rules, skills, subagents, hooks, permissions. Also undoes a migration by run-id. Use when the user asks to move or import settings from one AI coding tool to another, or to roll one back.
 user-invocable: true
 ---
 
 # open-migrate — move settings between AI coding tools
 
 Migrate one tool's configuration into another. Both tools are inputs: you are told which to read from and which to write to, so never infer either from where this file is installed.
+
+## Mode
+
+`rollback` as the first argument is a different job, not a migration.
+
+```
+/open-migrate rollback <run-id>     undo one run
+/open-migrate rollback              list runs and ask which
+```
+
+Read `core/rollback.md` and follow it instead of everything below. "undo the migration",
+"revert what you just did", and the like mean the same thing — treat them as this mode and
+confirm the run-id with the user before acting.
 
 ## 0. Resolve inputs
 
