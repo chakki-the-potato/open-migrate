@@ -127,9 +127,11 @@ docs, not that whoever produced it was paying attention.
 until you push, bump, and update, so a golden generated against it gets pinned to repository
 hashes it was not produced from — the one failure this gate cannot detect, because the manifest
 would look correct. This is not hypothetical: the first golden was nearly generated against an
-installed `procedure.md` two commits old. It stays true after the fact — the copy sitting in
-`~/.grok` was later found lagging `core/procedure.md` by one commit (e8765be, which replaced the
-MCP rationale) while its `SKILL.md` still matched the repository. An installed tree can look
+installed `procedure.md` that had already fallen behind. How far was never measured at the time,
+so no number is given here. It stays true after the fact, and that part was measured — every
+installed copy on the development machine (`~/.claude`, `~/.cursor`, `~/.grok`) was later found
+holding `core/procedure.md` at 73b5084, one commit behind e8765be, which replaced the MCP
+rationale — while each `SKILL.md` still matched the repository. An installed tree can look
 current at the surface the tool reads first and be stale underneath.
 
 `freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
@@ -144,11 +146,12 @@ are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machi
   the case into. The gap is structural, not an omission. Every other source carries a
   secret-shaped value and a check that its key name reaches the report.
 - **Grok Build finds the installed skill; no migration has been driven from inside it.** A
-  headless `grok -p` session lists `open-migrate` among its skills and returns its description,
-  opening verbatim from `adapters/open-migrate/SKILL.md`, so the install lands where Grok looks.
-  That is discovery, not execution: it shows the path is read and the frontmatter parsed, and says
-  nothing about whether `core/*.md` resolves when the skill is actually invoked. Every direction in
-  the table above was driven from another tool, and the conversion itself remains verified in both
-  directions.
+  headless `grok -p` session lists `open-migrate` among its skills and returns the opening of its
+  description verbatim from `adapters/open-migrate/SKILL.md`. The reply stopped before the field's
+  last sentence, and nothing in it distinguishes the model truncating from the parse truncating.
+  Either way it is discovery, not execution: the path is read and the frontmatter parsed, and
+  whether `core/*.md` resolves when the skill is actually invoked is untouched by this. Every
+  direction in the table above was driven from another tool, and the conversion itself remains
+  verified in both directions.
 - **Codex CLI's full round trip is unverified.** `plugin list` reports it installed and enabled;
   nothing beyond that was checked.
