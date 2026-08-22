@@ -146,7 +146,7 @@ have brought it straight back. `codex plugin marketplace upgrade` is the part th
 it. README says not to install both ways in one tool; this is what ignoring that looks like from
 the model's side.
 
-**Do not let the run see `test/golden/`.** A regeneration driven from inside this checkout can
+**Do not let the run read `test/golden/`.** A regeneration driven from inside this checkout can
 read the golden it is about to replace, and an agent that finds the expected output will match it.
 The result passes every check for the wrong reason: `check-golden-fresh.sh` compares hashes of the
 *docs*, and `verify-migration.sh` compares the tree against rules — neither can tell a conversion
