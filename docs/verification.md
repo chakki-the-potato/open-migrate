@@ -123,9 +123,12 @@ docs, not that whoever produced it was paying attention.
 ./scripts/freeze-golden.sh codex claude /tmp/g
 ```
 
+Two rules govern where a regeneration reads from. Both exist because the gate cannot see past
+them: a golden that came from the wrong place still looks correct in the manifest.
+
 **Read `core/` from this repository, never the installed skill.** An installed copy lags behind
 until you push, bump, and update, so a golden generated against it gets pinned to repository
-hashes it was not produced from — the one failure this gate cannot detect, because the manifest
+hashes it was not produced from — a failure this gate cannot detect, because the manifest
 would look correct. This is not hypothetical: the first golden was nearly generated against an
 installed `procedure.md` that had already fallen behind. How far was never measured at the time,
 so no number is given here. It stays true after the fact, and that part was measured — every
@@ -147,8 +150,13 @@ the model's side.
 read the golden it is about to replace, and an agent that finds the expected output will match it.
 The result passes every check for the wrong reason: `check-golden-fresh.sh` compares hashes of the
 *docs*, and `verify-migration.sh` compares the tree against rules — neither can tell a conversion
-that followed `core/` from one that copied the answer. This is the third failure in this family
-the gate cannot see, and the only one where the golden ends up correct while proving nothing.
+that followed `core/` from one that copied the answer. The gate cannot see this one either — and
+it is the only one where the golden ends up correct while proving nothing.
+
+The fix for the other two does not apply here, which is the easy thing to get wrong. Those are
+runs that read a stale copy of their own *input*, and reading from the repository fixes them. A
+golden is not an input: it is the thing being measured. A run that reads it has not migrated
+anything, it has copied, and having read `core/` from the repository does not make that better.
 
 Observed, not imagined. A Codex → Claude run driven from a Grok session against a seeded target
 announced it mid-run: *"There's a Codex→Claude golden. I'll read it so the conversion, ledger, and
