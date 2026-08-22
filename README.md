@@ -160,11 +160,17 @@ Each direction was scored by a deterministic verifier after actually migrating a
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
 | **Claude** | — | 54 | 57 | 61 |
-| **Codex** | 64 | — | 58 | 62 |
+| **Codex** | 71 | — | 65 | 69 |
 | **Cursor** | 59 | 50 | — | 55 |
 | **Grok** | 61 | 52 | 58 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
+
+The three Codex-source directions run seven checks more than the others. The Codex fixture's
+rules file carries three argv-prefix rules that cannot become target permissions — one holding
+a quote and parentheses, one holding whitespace, one whose joined form runs past 200
+characters — and those checks assert that each is kept out of the target's permission list and
+named verbatim in the report instead.
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
@@ -207,7 +213,7 @@ All of these land in the report's "Approximated" or "Manual action required" sec
 
 ## Development
 
-`skills/` is a **build artifact**. The sources of truth are `adapters/plugin/SKILL.md` and `core/`; it is committed because the plugin loader looks for `skills/` at the repository root.
+`skills/` is a **build artifact**. The sources of truth are `adapters/open-migrate/SKILL.md` and `core/`; it is committed because the plugin loader looks for `skills/` at the repository root.
 
 ```
 ./scripts/build-plugin.sh           regenerate the distribution
@@ -215,7 +221,7 @@ All of these land in the report's "Approximated" or "Manual action required" sec
 claude plugin validate . --strict   validate the manifests
 ```
 
-After editing `core/` or `adapters/plugin/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
+After editing `core/` or `adapters/open-migrate/SKILL.md`, run the build again. Copies already installed in a tool's home go stale too, so re-run `./install.sh <dest>`.
 
 **Bump `version` in `.claude-plugin/plugin.json` whenever the content changes.** Plugin managers compare version numbers, not content — `claude plugin update` reports "already at the latest version" and keeps serving the stale cache if the version did not move, no matter how much the files changed.
 

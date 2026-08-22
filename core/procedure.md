@@ -15,7 +15,9 @@ When two docs give different instructions for the same item, resolve it in this 
 
 If the target (or source) root is not that tool's real home, you are in test mode. Substitute the root for every home path the tool docs mention — `~/.cursor/mcp.json` becomes `<root>/mcp.json`, `~/.grok/config.toml` becomes `<root>/config.toml`. Files that live **outside** the home directory (such as Claude's `~/.claude.json`) fold **inside** the root: `<root>/.claude.json`.
 
-**Never read files from the real home in test mode.** Pulling the user's actual configuration into a test run corrupts the result. If the root has no corresponding file, record it as "scope not present", count it as 0, and note it in the report.
+**Test mode applies per side, not to the whole run.** A side is in test mode when *its* root is a path you were given rather than that tool's real home. Reading the real `~/.codex` as the source while writing to a temporary destination is a normal and useful shape — a dry run against real configuration — and the source side is simply not in test mode there.
+
+**For a side that is in test mode, never read that tool's real home.** Pulling the user's actual configuration into a run that was pointed elsewhere corrupts the result: the destination would be checked for conflicts against files it does not have. If the root has no corresponding file, record it as "scope not present", count it as 0, and note it in the report.
 
 ## Run artifacts (every scope)
 
@@ -160,6 +162,14 @@ Process only approved categories, in this order.
 
 If a write fails (JSON parse error and the like): restore that file from the backup, stop the remaining categories, and record the failure point in the report.
 
+### Hook commands that point into the source tool's home
+
+A hook command is a shell string, and it often names a script by absolute path — `/Users/me/.codex/hooks/notify.sh`. Copied unchanged, it runs fine, but the target tool's configuration now depends on the source tool's directory. Uninstall the source and the hook breaks; the dependency is invisible until then.
+
+Do not rewrite the path. You cannot know whether the script is safe to relocate, what else calls it, or whether it reads files beside itself.
+
+Instead, **report every migrated hook whose command references the source tool's home**, quoting the path, and say plainly that the target now depends on it. The user decides whether to copy the script somewhere neutral and update the command. A hook pointing at a shared location outside both homes needs no mention.
+
 ### Global-rule merge format (applies to every target)
 
 Every target doc instructs you to write a `## Migrated from <source> (<date>)` section. The format is defined here, once.
@@ -188,9 +198,11 @@ Write `.migrate/<run-id>/migration-report.md` and print the same content to the 
 # Migration Report: <source> → <target> (<run-id>)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Impossible |
-|---|---|---|---|---|---|
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
+|---|---|---|---|---|---|---|
 - Write **all ten** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
+- **Skipped** counts items the target already has — a same-name skill, a subagent, an env key with the same value. These are neither failures nor conversions, and forcing them into Impossible misreports a healthy run as a broken one. On a real machine this is often the largest column: 33 subagents skipped because the same plugin is installed on both sides is a normal outcome, not 33 losses.
+- Every row must satisfy `Found = Automatic + Approximate + Suggestion + Skipped + Impossible`. If it does not, a category is missing from your accounting.
 
 ## Migrated (automatic)
 - <category>: <item> → <target location>

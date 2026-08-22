@@ -20,7 +20,7 @@ fi
 
 # Everything the plugin actually ships. Changes anywhere else (tests, docs/, the
 # README) do not reach an installed copy and so do not require a bump.
-shipped=$(git diff --name-only "$base"...HEAD -- core adapters/plugin skills | wc -l | tr -d ' ')
+shipped=$(git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills | wc -l | tr -d ' ')
 if [ "$shipped" -eq 0 ]; then
   echo "OK: no shipped content changed since $base"
   exit 0
@@ -37,7 +37,7 @@ fi
 if [ "$now" = "$was" ]; then
   echo "FAIL: $shipped shipped file(s) changed but version is still $now" >&2
   echo "      Bump .claude-plugin/plugin.json, or installed copies keep serving the old content." >&2
-  git diff --name-only "$base"...HEAD -- core adapters/plugin skills | sed 's/^/      /' >&2
+  git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills | sed 's/^/      /' >&2
   exit 1
 fi
 

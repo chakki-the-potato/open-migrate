@@ -31,6 +31,7 @@ Consider it installed when `~/.codex/config.toml` or `~/.codex/AGENTS.md` exists
 ### Hooks
 - The 11 official events: SessionStart, SessionEnd, SubagentStart, SubagentStop, PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, UserPromptSubmit, Stop. All share Claude's names — no event-name conversion needed.
 - **If `hooks.json` contains an event outside those 11** (dead config that Codex silently ignores): check the target tool doc's valid-event list and migrate unchanged if the same name exists there; otherwise drop it and record it in the report. Example: `Notification` is unofficial in Codex but exists in Claude — migrate it.
+- Codex's native tool names include `read_file`, `grep_files`, and `apply_patch` alongside the shell family. Map the obvious ones by function — `read_file`→`Read`, `grep_files`→`Grep` — and for any name not listed here, do not invent a mapping: drop the matcher and record the original name, since a guessed matcher silently scopes a hook to the wrong tool or to nothing.
 - Tool-name matchers: `apply_patch` → the target's edit tool. Claude and Grok split this into two tools, so match both via a regex alternation (`Edit|Write`); Cursor has only `Write`. The `shell` / `local_shell` / `exec_command` variants → `Bash` for Claude and Grok, `Shell` for Cursor. `mcp__server__tool` is identical on every target. **If the target doc has its own tool-name mapping table, that table wins.**
 - The timeout unit is seconds on both sides.
 
@@ -42,6 +43,18 @@ Consider it installed when `~/.codex/config.toml` or `~/.codex/AGENTS.md` exists
 - Decision mapping: `allow`→allow, `prompt`→ask, `forbidden`→deny.
 - `pattern=["git","status"]` → `Bash(git status:*)`.
 - If an element is itself a list, expand every combination: `["npm","run",["build","test"]]` → `Bash(npm run build:*)` plus `Bash(npm run test:*)`.
+
+**Most real rules do not survive this conversion. Check before converting each one.**
+
+An argv-prefix rule is a list of exact literals; a target's permission string is a pattern with its own syntax. A rule converts only when joining its tokens with spaces produces something the target can actually match. Skip the rule and list it verbatim under manual action when any of these hold:
+
+- **A token contains a quote, a parenthesis, or a shell metacharacter.** `Bash(...)` ends at the first `)`, so a rule holding an inline script — `node -e "const fs=require(\"fs\")…"` — produces a truncated pattern that matches nothing.
+- **A token contains whitespace.** Joining on spaces makes the boundary between tokens indistinguishable from the space inside one, and the result no longer describes the same command.
+- **The joined string runs past roughly 200 characters.** A prefix that long is a full command line, not a prefix; it will never match anything but itself, and it buries the rules that do work.
+
+This is not a rare edge. On the real machine this rule was written against, a `rules/default.rules` of 353 entries yielded only about a third that convert — the rest are `/bin/zsh -lc "…"` and `node -e "…"` wrappers. Converting them anyway produced 43 permission entries over 200 characters, the longest 806, none of which can ever match.
+
+**Report the count.** "245 of 353 rules could not be expressed as target permissions" is the useful sentence; a target whose allow list silently grew from 2 entries to 334 tells the user nothing about what happened.
 
 ### Subagents (TOML → md)
 `agents/<name>.toml` → `<name>.md`:
