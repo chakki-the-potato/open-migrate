@@ -125,9 +125,11 @@ rollback report names the manual steps it *cannot* undo.
 - **Move credentials.** `auth.json`, API keys, and credential files are never read, let alone
   copied. A secret found inside a config value becomes `<REDACTED-REENTER>`, and the report names
   the key and where it came from — never the value.
-- **Register MCP servers.** Deliberately out of scope: adding a server changes what your editor
-  can reach, and server definitions routinely carry API keys. Servers found are counted and named
-  so you can move them yourself.
+- **Register MCP servers.** Deliberately out of scope. A server definition routinely carries its
+  credential inline, and this tool redacts secrets rather than copying them — so a migrated server
+  would arrive registered and broken, working only once you re-entered the key. Something that
+  looks migrated and is not is worse than something the report hands back to you. Servers found are
+  counted and named with their source location.
 - **Change your automation level.** Approval policy and sandbox mode have a matching concept in
   every tool but not a matching meaning, so you get a suggestion and nothing is applied.
 - **Delete anything.** Not in the source, not in the target. Same-name skills and subagents are
@@ -197,8 +199,14 @@ What makes that affordable: there are **no per-direction converters**. Each tool
 knowledge doc — how to read it, how to write into it — and a direction is just one doc paired
 with another. Four fixtures and four verifiers cover all twelve.
 
-See **[docs/verification.md](docs/verification.md)** for the per-direction table, the dry run
-against a real 353-rule Codex config, and what is still uncovered.
+Fixtures only prove so much, so it was also run against a real `~/.codex` holding 353 permission
+rules. The current guard converts 104 of them and reproduces the other 249 verbatim in the report.
+The version before that guard emitted 334 entries from the same source — 43 of them over 200
+characters, the longest 806 — **none of which could ever have matched anything.** That run is what
+found the guard, and then a second defect in how alternation matchers were decomposed.
+
+See **[docs/verification.md](docs/verification.md)** for the per-direction table, the full dry-run
+breakdown, and what is still uncovered.
 
 ---
 
@@ -210,6 +218,15 @@ applies, it is first-party and you should probably use it.
 open-migrate covers what that does not: migrating **out of** Codex, and migrating **into** Cursor
 or Grok Build. It also works at a different level — home scope plus project scope, explicit
 secret handling, an approval gate, a loss report, and rollback.
+
+**[rulesync](https://github.com/dyoshikawa/rulesync)** solves a neighbouring problem and covers far
+more tools than this does. If what you want is `AGENTS.md`, `CLAUDE.md`, and `.cursor/rules/` kept
+in step across a repository from one source of truth, use it — that is what it is built for.
+
+It is a generator, though, and generators regenerate. That is the right model for project rule
+files you own and can recreate, and the wrong one for `~/.claude`, which holds settings you
+accumulated over months and cannot. So open-migrate merges rather than writes, shows you the plan
+before it touches anything, and can be undone afterwards. Different problem, different guarantees.
 
 ---
 
@@ -228,7 +245,12 @@ secret handling, an approval gate, a loss report, and rollback.
 ## Contributing
 
 Adding a tool costs one knowledge doc, one fixture, and one verifier — and buys eight new
-directions. See **[docs/development.md](docs/development.md)**.
+directions.
+
+Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — it covers what is in scope, and the three
+things that break otherwise-correct pull requests. **[docs/development.md](docs/development.md)**
+has the repository layout. Vulnerabilities go through **[SECURITY.md](SECURITY.md)**, not the
+issue tracker.
 
 ## License
 
