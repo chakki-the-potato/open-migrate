@@ -78,8 +78,10 @@ Five things silently produce a worthless golden.
   compares rules, and neither can tell a conversion that followed `core/` from one that copied the
   answer. This is the only one of the five where the golden comes out correct, and reading `core/`
   from the repository does not help — a golden is not an input to the run, it is what the run is
-  being measured against. Regenerate from a checkout without `test/golden/`, or a worktree with
-  that path removed. Observed, not hypothetical.
+  being measured against. Use `./scripts/blind-worktree.sh <path>` — it builds a worktree where
+  `test/golden/` was never written to disk, so the answer is absent rather than forbidden. Run the
+  migration there and freeze from your normal checkout. It is not containment: an agent that leaves
+  the worktree can still reach the golden through the main tree. Observed, not hypothetical.
 - **Verify before you freeze.** `freeze-golden.sh` records whatever is in the directory. A wrong
   migration frozen as the golden becomes the expected answer.
 - Absolute paths are rewritten to `<REPO>` and `<TARGET>` at freeze time so goldens are identical
@@ -105,8 +107,10 @@ See [docs/verification.md](docs/verification.md) for the per-direction table.
 These are decisions rather than gaps. A pull request against one is likely to be declined, so
 open an issue first if you disagree.
 
-- **MCP server registration.** Deliberately out of scope: adding a server changes what an editor
-  can reach, and server definitions routinely carry API keys.
+- **MCP server registration.** Deliberately out of scope: a definition carries its credential
+  inline, this tool redacts secrets rather than copying them, and a redacted server arrives
+  registered and broken. Something that looks migrated and is not is worse than something the
+  report hands back.
 - **Anything that reads or copies a credential.** [core/security.md](core/security.md) overrides
   every other step, including a user's explicit request.
 - **Per-direction converters.** A direction is one tool's read rules paired with another's write
@@ -162,7 +166,8 @@ bash -n install.sh scripts/*.sh                    shell syntax
 shellcheck -S warning -e SC1090,SC1091 \
   install.sh scripts/build-plugin.sh scripts/check-version-bump.sh \
   scripts/seed-target.sh scripts/verify-migration.sh \
-  scripts/freeze-golden.sh scripts/check-golden-fresh.sh
+  scripts/freeze-golden.sh scripts/check-golden-fresh.sh \
+  scripts/blind-worktree.sh
 ```
 
 Then, if the diff touches `core/`, the re-run and re-freeze from point 3 above.

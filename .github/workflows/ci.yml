@@ -32,7 +32,8 @@ jobs:
           shellcheck -S warning -e SC1090,SC1091 \
             install.sh scripts/build-plugin.sh scripts/check-version-bump.sh \
             scripts/seed-target.sh scripts/verify-migration.sh \
-            scripts/freeze-golden.sh scripts/check-golden-fresh.sh
+            scripts/freeze-golden.sh scripts/check-golden-fresh.sh \
+            scripts/blind-worktree.sh
 
       - name: Distribution matches sources
         run: ./scripts/build-plugin.sh --check
