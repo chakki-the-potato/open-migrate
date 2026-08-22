@@ -175,10 +175,10 @@ Each direction was scored by a deterministic verifier after actually migrating a
 
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
-| **Claude** | — | 47 | 46 | 54 |
-| **Codex** | 64 | — | 60 | 68 |
-| **Cursor** | 46 | 43 | — | 48 |
-| **Grok** | 47 | 44 | 46 | — |
+| **Claude** | — | 54 | 53 | 61 |
+| **Codex** | 70 | — | 66 | 74 |
+| **Cursor** | 52 | 49 | — | 54 |
+| **Grok** | 54 | 51 | 53 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
 
@@ -192,9 +192,9 @@ digest-shaped one. Each has a check asserting the rule was honored *and* that th
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
-Project scope is verified separately at 26 checks, and an empty target still fails 20 of them, so the verifier is not passing everything by default.
+Project scope is verified separately at 34 checks, and an empty target still fails 27 of them, so the verifier is not passing everything by default.
 
-Two gaps are open and not counted as covered. A Cursor source has no secret-report coverage at all — its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into. Claude and Grok sources have the surface but their committed target runs predate it, so restoring that check means regenerating those directions.
+One gap is open and not counted as covered: a **Cursor source** has no secret-report coverage. Its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into, so the gap is structural rather than an omission. Every other source carries a secret-shaped value and a check that its key name reaches the report.
 
 To run it yourself, seed a target first and then migrate into it:
 
@@ -207,7 +207,7 @@ To run it yourself, seed a target first and then migrate into it:
 The seed step matters. Half the checks assert that content already on the target survived the
 merge, and against an empty directory those pass for the wrong reason. Seeding is also what makes
 the suite runnable from a clean checkout — the target directories themselves are not committed.
-Running the verifier against a seed alone should fail: 35 to 46 checks, depending on the tool.
+Running the verifier against a seed alone should fail: 41 to 51 checks, depending on the tool.
 
 ## How this relates to Codex CLI's `/import`
 

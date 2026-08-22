@@ -12,3 +12,5 @@ chk "report: approval policy suggested"  grep -qE "approval_policy|sandbox_mode|
 # fixture used to sit in an MCP header, and MCP is no longer migrated. Restoring it means
 # putting a secret-shaped value in a surface this source still migrates and regenerating
 # this direction's targets — see source-codex.sh, where that has been done.
+chk "report: secret env key listed for re-entry" \
+  grep -qF "SERVICE_API_KEY" "${mig_dir}migration-report.md"

@@ -76,6 +76,17 @@ chk_not "AGENTS.override precedence"   grep -rqF --exclude-dir=.migrate "OVERRID
 # The report artifact exists (its contents are verified by the per-target checks)
 chk "report exists"                    test -f "${mig_dir}migration-report.md"
 
+# Run manifest — what makes the run undoable. Backups cover files the run modified and say
+# nothing about files it created, so rollback without this record restores the modified ones
+# and leaves every copied skill and subagent behind while reporting success.
+chk "changes.json exists"              test -f "${mig_dir}changes.json"
+chk "changes.json is valid JSON"       jq -e . "${mig_dir}changes.json"
+chk "changes.json has modified[]"      jq -e '(.modified | type) == "array"' "${mig_dir}changes.json"
+chk "changes.json has created[]"       jq -e '(.created  | type) == "array"' "${mig_dir}changes.json"
+chk "changes.json paths are relative"  jq -e '[.modified[]?, .created[]?, .created_dirs[]?] | all(startswith("/") | not)' "${mig_dir}changes.json"
+chk_not "no path both modified and created" \
+  jq -e '[.modified[]?] as $m | [.created[]?] as $c | ($m - ($m - $c)) | length > 0' "${mig_dir}changes.json"
+
 # Ledger (exists + valid + records sha256 hashes)
 chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
 chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
