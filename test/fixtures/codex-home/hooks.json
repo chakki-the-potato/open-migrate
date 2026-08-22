@@ -44,6 +44,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "shell|local_shell|apply_patch|CascadeEdit|Grep|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo post-tool",
+            "timeout": 8
+          }
+        ]
+      }
     ]
   }
 }

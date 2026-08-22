@@ -186,10 +186,10 @@ Each direction was scored by a deterministic verifier after actually migrating a
 
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
-| **Claude** | — | 54 | 53 | 61 |
-| **Codex** | 70 | — | 66 | 74 |
-| **Cursor** | 52 | 49 | — | 54 |
-| **Grok** | 54 | 51 | 53 | — |
+| **Claude** | — | 56 | 55 | 63 |
+| **Codex** | 77 | — | 73 | 81 |
+| **Cursor** | 54 | 51 | — | 56 |
+| **Grok** | 56 | 53 | 55 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
 
@@ -203,7 +203,7 @@ digest-shaped one. Each has a check asserting the rule was honored *and* that th
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
-Project scope is verified separately at 34 checks, and an empty target still fails 27 of them, so the verifier is not passing everything by default.
+Project scope is verified separately at 36 checks, and an empty target still fails 27 of them, so the verifier is not passing everything by default.
 
 One gap is open and not counted as covered: a **Cursor source** has no secret-report coverage. Its only secret-bearing surface was `mcp.json`, and Cursor has no env-injection surface to move the case into, so the gap is structural rather than an omission. Every other source carries a secret-shaped value and a check that its key name reaches the report.
 

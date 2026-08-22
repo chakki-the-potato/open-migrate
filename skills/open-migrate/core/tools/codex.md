@@ -33,6 +33,22 @@ Consider it installed when `~/.codex/config.toml` or `~/.codex/AGENTS.md` exists
 - Codex's native tool names include `read_file`, `grep_files`, and `apply_patch` alongside the shell family. Map the obvious ones by function — `read_file`→`Read`, `grep_files`→`Grep` — and for any name not listed here, do not invent a mapping: drop the matcher and record the original name, since a guessed matcher silently scopes a hook to the wrong tool or to nothing.
 - Tool-name matchers: `apply_patch` → the target's edit tool. Claude and Grok split this into two tools, so match both via a regex alternation (`Edit|Write`); Cursor has only `Write`. The `shell` / `local_shell` / `exec_command` variants → `Bash` for Claude and Grok, `Shell` for Cursor. `mcp__server__tool` is identical on every target. **If the target doc has its own tool-name mapping table, that table wins.**
 - The timeout unit is seconds on both sides.
+- **A matcher can be a regex alternation, not one tool name.** `Edit|Write|apply_patch` and
+  `Bash|shell|local_shell|read_file|grep_files|mcp__.*` are both ordinary Codex matchers, and
+  real config is full of them. Split on `|`, map each alternative with the rules above, join the
+  survivors back with `|`, and **de-duplicate** — several Codex names collapse onto one target
+  name (`shell`, `local_shell`, `exec_command` all become `Bash`), so a naive join repeats it.
+  An alternative may also *expand*: `apply_patch` becomes `Edit|Write` on Claude and Grok.
+- **Alternatives you cannot map are dropped from the alternation, not guessed at, and each one
+  is named in the report.** Three kinds turn up. A name from a third tool's vocabulary — a
+  Codex config can carry `Shell`, which is Cursor's — has no meaning on either side here.
+  A name from the *target's* vocabulary that Codex never had (`Read`, `Grep`, `AskUserQuestion`)
+  passes through unchanged, since it is already what the target calls that tool. And a regex
+  alternative such as `mcp__.*` is a pattern rather than a tool name — carry it over verbatim,
+  because MCP tool names are identical on every target.
+- **If every alternative drops, drop the whole hook entry** and record it with its original
+  matcher. A hook whose matcher became empty does not match nothing — an empty matcher matches
+  *everything* on Claude, which silently widens the hook to every tool call.
 
 ### Custom prompts (prompts/*.md → the target's commands)
 - The surface is deprecated, but migrate it when present. **The target doc decides the destination and format** — write to the target's command file if it has one (Claude's `commands/<name>.md`), otherwise to whatever surface the target doc designates (skills for Cursor and Grok). Carry the file contents over unchanged.
