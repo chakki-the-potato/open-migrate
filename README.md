@@ -104,13 +104,18 @@ Removing the skill does not undo a migration. Settings that moved stay where the
 `/open-migrate rollback` **first** if you want them back — once the skill is gone you have to
 reinstall it to roll anything back.
 
-Whichever route installed it, the skill is one directory:
+If `npx` or the clone put it there:
 
 ```
-rm -rf ~/.claude/skills/open-migrate   # or ~/.codex, ~/.cursor, ~/.grok — CODEX_HOME and GROK_HOME apply
+npx open-migrate --uninstall claude    # or codex / cursor / grok
+npx open-migrate --uninstall --all     # everywhere it is installed
 ```
 
-If you installed the plugin instead, remove it through the manager:
+It names each path it removed, and says so when there was nothing there. Deleting
+`<tool-home>/skills/open-migrate` by hand does the same thing.
+
+If you installed the plugin instead, remove it through the manager — `--uninstall` reports a
+plugin copy when it finds one but never deletes it, because the manager tracks its own state:
 
 ```
 claude plugin uninstall open-migrate@migrate-marketplace

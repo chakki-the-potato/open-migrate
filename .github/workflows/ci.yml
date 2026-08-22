@@ -146,6 +146,27 @@ jobs:
           if node bin/open-migrate.js windsurf 2>/dev/null; then
             echo "unknown tool name was accepted"; exit 1
           fi
+
+          # Uninstall removes the skill, and leaves a plugin copy alone. Deleting that
+          # would leave the plugin manager holding state for something no longer there.
+          export CODEX_HOME="$(mktemp -d)/codex"
+          node bin/open-migrate.js codex > /dev/null
+          mkdir -p "$CODEX_HOME/plugins/cache/migrate-marketplace/open-migrate"
+          node bin/open-migrate.js --uninstall codex > /tmp/uninstall.log
+          if [ -d "$CODEX_HOME/skills/open-migrate" ]; then
+            echo "uninstall left the skill in place"; exit 1
+          fi
+          if [ ! -d "$CODEX_HOME/plugins/cache/migrate-marketplace/open-migrate" ]; then
+            echo "uninstall deleted a plugin copy it does not own"; exit 1
+          fi
+          grep -q "codex plugin remove" /tmp/uninstall.log || {
+            echo "uninstall did not name the manager command for the plugin copy"; exit 1
+          }
+
+          # Uninstalling an unknown tool must fail, not silently do nothing.
+          if node bin/open-migrate.js --uninstall windsurf 2>/dev/null; then
+            echo "unknown tool name was accepted by --uninstall"; exit 1
+          fi
           echo "installer behaves"
 
       - name: Packaged contents are only what ships

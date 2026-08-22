@@ -1,6 +1,6 @@
 {
   "name": "open-migrate",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Move your settings when you switch AI coding tools — Claude Code, Codex CLI, Cursor, Grok Build. Rules, skills, subagents, hooks, permissions. Plan first, undo after.",
   "keywords": [
     "claude-code",
