@@ -1,0 +1,94 @@
+name: Bug report
+description: A migration produced the wrong result, lost something, or refused to run.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste configuration that carries a secret. Key names, paths, and structure are what
+        matter — a value is never needed to reproduce a migration bug.
+
+        If the bug is that a secret leaked, close this and follow
+        [SECURITY.md](https://github.com/chakki-the-potato/open-migrate/blob/main/SECURITY.md)
+        instead.
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source tool
+      description: The tool you migrated from.
+      options: ["Claude Code", "Codex CLI", "Cursor", "Grok Build"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target tool
+      description: The tool you migrated into.
+      options: ["Claude Code", "Codex CLI", "Cursor", "Grok Build"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options: ["Home", "Project", "Both"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How open-migrate is installed
+      description: >
+        If both, say so in the description — two skills of one name in one home is itself a known
+        failure mode, and which one loads is not predictable.
+      options: ["Plugin", "install.sh", "Both", "Not sure"]
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: open-migrate version
+      description: The `version` field in `.claude-plugin/plugin.json`, or the commit you installed from.
+      placeholder: "0.6.3"
+    validations:
+      required: true
+
+  - type: input
+    id: tool-versions
+    attributes:
+      label: Versions of both tools
+      placeholder: "claude 2.1.4, codex 0.9.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What the run did, and what you expected instead. Name the category — rules, skills, subagents, commands, hooks, permissions, environment variables.
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Relevant part of the migration report
+      description: >
+        From `<target>/.migrate/<run-id>/migration-report.md`. The run id alone helps too. Redact
+        anything private before pasting — this becomes a public issue.
+      render: text
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked [Known limitations](https://github.com/chakki-the-potato/open-migrate#known-limitations) and [Where loss happens](https://github.com/chakki-the-potato/open-migrate#where-loss-happens) — some behaviour is documented and intended
+          required: true
+        - label: Nothing I pasted contains a credential, API key, or token value
+          required: true
