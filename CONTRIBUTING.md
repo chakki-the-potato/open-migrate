@@ -31,9 +31,8 @@ reach an installed copy and need no bump. `./scripts/check-version-bump.sh` deci
 way in CI.
 
 The version lives in two manifests — `.claude-plugin/plugin.json` for the plugin and
-`package.json` for npm — and they are two release surfaces for the same content. Move both. CI
-fails when they disagree whether or not anything shipped changed, and a release tag that does not
-match them makes `publish.yml` refuse.
+`package.json` for npm — two release surfaces for the same content. Move both. CI compares them
+whenever shipped content changed, and a release tag matching only one makes `publish.yml` refuse.
 
 ### 3. CI does not test the migration itself
 
@@ -70,7 +69,8 @@ Four things silently produce a worthless golden.
 - **Read `core/` from the repository, never from an installed skill.** An installed copy lags until
   someone pushes, bumps, and updates. A golden produced against a stale doc gets pinned to
   repository hashes it did not come from, and the manifest still looks correct. This is the one
-  failure the gate cannot detect, and it has already been caught once in review.
+  failure the gate cannot detect, and it has already come close once — the installed
+  `procedure.md` was two commits behind when the first golden was generated, noticed by hand.
 - **Verify before you freeze.** `freeze-golden.sh` records whatever is in the directory. A wrong
   migration frozen as the golden becomes the expected answer.
 - Absolute paths are rewritten to `<REPO>` and `<TARGET>` at freeze time so goldens are identical
