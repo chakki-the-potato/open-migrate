@@ -127,9 +127,11 @@ docs, not that whoever produced it was paying attention.
 until you push, bump, and update, so a golden generated against it gets pinned to repository
 hashes it was not produced from — the one failure this gate cannot detect, because the manifest
 would look correct. This is not hypothetical: the first golden was nearly generated against an
-installed `procedure.md` two commits old. It stays true after the fact — the copy sitting in
-`~/.grok` was later found lagging `core/procedure.md` by one commit (e8765be, which replaced the
-MCP rationale) while its `SKILL.md` still matched the repository. An installed tree can look
+installed `procedure.md` that had already fallen behind. How far was never measured at the time,
+so no number is given here. It stays true after the fact, and that part was measured — every
+installed copy on the development machine (`~/.claude`, `~/.cursor`, `~/.grok`) was later found
+holding `core/procedure.md` at 73b5084, one commit behind e8765be, which replaced the MCP
+rationale — while each `SKILL.md` still matched the repository. An installed tree can look
 current at the surface the tool reads first and be stale underneath.
 
 `freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
