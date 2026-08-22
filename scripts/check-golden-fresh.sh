@@ -45,12 +45,27 @@ for name, entry in directions.items():
     if drifted:
         stale.append((name, drifted))
 
+# The reverse direction matters just as much and is easier to hit. Both CI jobs walk the
+# manifest, so a golden tree with no entry is verified by nothing and pinned to nothing — it
+# looks like coverage and is not. A half-applied commit produces exactly that: the tree lands,
+# the manifest hunk does not.
+orphans = sorted(
+    p.name for p in pathlib.Path("test/golden").iterdir()
+    if p.is_dir() and p.name not in directions
+)
+
 for name in missing:
     print(f"FAIL: {name} is in the manifest but test/golden/{name}/ does not exist", file=sys.stderr)
 for name, drifted in stale:
     print(f"FAIL: {name} was produced by an older revision of: {', '.join(drifted)}", file=sys.stderr)
+for name in orphans:
+    print(
+        f"FAIL: test/golden/{name}/ has no manifest entry — nothing verifies or pins it. "
+        f"Re-freeze it, or delete it.",
+        file=sys.stderr,
+    )
 
-if stale or missing:
+if stale or missing or orphans:
     print(
         "\n      A golden is the only evidence that the current docs still convert correctly.\n"
         "      Re-run the affected directions and re-freeze them, or revert the doc change.",
