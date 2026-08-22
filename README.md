@@ -245,9 +245,10 @@ before it touches anything, and can be undone afterwards. Different problem, dif
 
 ## Known limitations
 
-- **Grok Build has not been verified on a real install.** The development machine has no Grok
-  Build, so the files land in the right place but whether Grok loads them was never confirmed.
-  The conversion itself is verified in both directions.
+- **Grok Build is only partly verified on a real install.** A headless `grok -p` session finds
+  the installed skill and returns its description, so the files land where Grok looks — but no
+  migration has been driven from inside Grok. The conversion itself is verified in both
+  directions.
 - The tool docs describe each editor's config surface **as of August 2026**. If a tool changes
   its format, its doc needs updating.
 - The similarly named community CLI `superagent-ai/grok-cli` keeps its config somewhere else

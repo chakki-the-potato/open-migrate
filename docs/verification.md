@@ -127,7 +127,10 @@ docs, not that whoever produced it was paying attention.
 until you push, bump, and update, so a golden generated against it gets pinned to repository
 hashes it was not produced from — the one failure this gate cannot detect, because the manifest
 would look correct. This is not hypothetical: the first golden was nearly generated against an
-installed `procedure.md` two commits old.
+installed `procedure.md` two commits old. It stays true after the fact — the copy sitting in
+`~/.grok` was later found lagging `core/procedure.md` by one commit (e8765be, which replaced the
+MCP rationale) while its `SKILL.md` still matched the repository. An installed tree can look
+current at the surface the tool reads first and be stale underneath.
 
 `freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
 "already migrated" — a ledger no-op would freeze an empty diff as the expected output and every
@@ -140,7 +143,12 @@ are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machi
   `mcp.json`, and MCP is no longer migrated; Cursor has no environment-variable surface to move
   the case into. The gap is structural, not an omission. Every other source carries a
   secret-shaped value and a check that its key name reaches the report.
-- **Grok Build has never been verified on a real install.** The conversion is verified in both
-  directions; whether Grok loads the installed skill was never confirmed.
+- **Grok Build finds the installed skill; no migration has been driven from inside it.** A
+  headless `grok -p` session lists `open-migrate` among its skills and returns its description,
+  opening verbatim from `adapters/open-migrate/SKILL.md`, so the install lands where Grok looks.
+  That is discovery, not execution: it shows the path is read and the frontmatter parsed, and says
+  nothing about whether `core/*.md` resolves when the skill is actually invoked. Every direction in
+  the table above was driven from another tool, and the conversion itself remains verified in both
+  directions.
 - **Codex CLI's full round trip is unverified.** `plugin list` reports it installed and enabled;
   nothing beyond that was checked.
