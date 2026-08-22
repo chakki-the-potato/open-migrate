@@ -60,3 +60,25 @@ chk "digest carried over, not redacted" \
 # surface carries it as a manual action instead of a redacted value.
 chk "report: secret env key listed for re-entry" \
   grep -qF "SERVICE_API_KEY" "${mig_dir}migration-report.md"
+
+# ── Alternation matchers ───────────────────────────────────────────────
+# A Codex matcher is a regex, so it can hold many tool names at once. Each alternative maps
+# on its own, several Codex names collapse onto one target name, and a name belonging to no
+# supported tool maps to nothing. Real config is full of these.
+#
+# `CascadeEdit` belongs to no tool this repository supports, so no target can map it. It must
+# not survive as a matcher alternative — an alternative the target does not know scopes that
+# part of the hook to nothing — and it must be named in the report rather than dropped silently.
+chk_not "unmappable alternative not carried" \
+  grep -rqF --exclude-dir=.migrate "CascadeEdit" "$TARGET"
+chk "report: unmappable alternative named"   grep -qF "CascadeEdit" "${mig_dir}migration-report.md"
+
+# `shell` and `local_shell` both collapse onto one target name. Joining the mapped results
+# without de-duplicating repeats it, which is the naive-join bug this guards against.
+chk_not "collapsed alternatives not duplicated" \
+  grep -rqE --exclude-dir=.migrate 'Bash\|Bash|Shell\|Shell|Write\|Write' "$TARGET"
+
+# An MCP tool pattern is a regex, not a tool name, and is identical on every target.
+chk "mcp tool pattern carried verbatim" \
+  grep -rqF --exclude-dir=.migrate "mcp__.*" "$TARGET"
+chk "report: alternation hook accounted for" grep -qF "post-tool" "${mig_dir}migration-report.md"
