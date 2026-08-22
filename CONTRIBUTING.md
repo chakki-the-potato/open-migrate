@@ -169,7 +169,7 @@ Twelve checks, all in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 | Distribution matches sources | `skills/` was edited directly, or the build was not re-run |
 | Version bumped | shipped content changed without a bump, or the two manifests disagree |
 | Fixtures parse | a fixture's JSON or TOML is malformed |
-| Goldens match the knowledge docs that produced them | a pinned doc's hash moved, or a manifest entry has no golden tree |
+| Goldens match the knowledge docs that produced them | a pinned doc's hash moved, a manifest entry has no golden tree, or a golden tree has no manifest entry |
 | Goldens still pass the verifier | `verify-migration.sh` reports a FAIL against any frozen tree |
 | Seed produces a target the verifier rejects | the seed passes the suite, meaning the checks assert nothing |
 | npx installer puts the payload in place | `bin/open-migrate.js` does not install what it claims to |
