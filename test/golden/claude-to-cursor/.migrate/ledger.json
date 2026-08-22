@@ -1,0 +1,26 @@
+{
+  "<REPO>/test/fixtures/claude-home/CLAUDE.md": {
+    "sha256": "6b74fc3dc9a1ceb94637e973eb5ec6dc27b94af3ed0d2e17f44dcf9e19535482",
+    "run": "20260822-180938"
+  },
+  "<REPO>/test/fixtures/claude-home/settings.json": {
+    "sha256": "3622766684fc0bd6195d1371286fba1d5d633c524b41b8d394334c4a876d0bc1",
+    "run": "20260822-180938"
+  },
+  "<REPO>/test/fixtures/claude-home/agents/reviewer.md": {
+    "sha256": "6d836a120c57e516ff1ee5daef83d9e424f04025470778672bea40a23d649d36",
+    "run": "20260822-180938"
+  },
+  "<REPO>/test/fixtures/claude-home/commands/greet.md": {
+    "sha256": "513c44a59b150f4de142ba3f01a14f215e5ade46759f666c0d4c2a31df5d0a4f",
+    "run": "20260822-180938"
+  },
+  "<REPO>/test/fixtures/claude-home/skills/hello/SKILL.md": {
+    "sha256": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "run": "20260822-180938"
+  },
+  "<REPO>/test/fixtures/claude-home/skills/hello/reference/tone.md": {
+    "sha256": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "run": "20260822-180938"
+  }
+}

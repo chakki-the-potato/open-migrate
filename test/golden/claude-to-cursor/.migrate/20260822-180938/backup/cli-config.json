@@ -1,0 +1,1 @@
+{ "version": 1, "approvalMode": "allowlist", "permissions": { "allow": ["Shell(ls)"], "deny": [] } }
