@@ -160,11 +160,17 @@ Each direction was scored by a deterministic verifier after actually migrating a
 | From \ To | Claude | Codex | Cursor | Grok |
 |---|---|---|---|---|
 | **Claude** | — | 54 | 57 | 61 |
-| **Codex** | 64 | — | 58 | 62 |
+| **Codex** | 71 | — | 65 | 69 |
 | **Cursor** | 59 | 50 | — | 55 |
 | **Grok** | 61 | 52 | 58 | — |
 
 The numbers are how many checks that direction runs, and every one of them passes.
+
+The three Codex-source directions run seven checks more than the others. The Codex fixture's
+rules file carries three argv-prefix rules that cannot become target permissions — one holding
+a quote and parentheses, one holding whitespace, one whose joined form runs past 200
+characters — and those checks assert that each is kept out of the target's permission list and
+named verbatim in the report instead.
 
 What makes this affordable is that **no direction has its own test.** There are four source fixtures and four target verifiers; a direction is one combined with another. Sixteen combinations, twelve real directions, eight files. Adding a fifth tool would add one fixture and one verifier — and eight directions.
 
