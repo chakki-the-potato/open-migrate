@@ -119,9 +119,10 @@ The same reasoning applies to any other path a target reads natively — check t
 6. Permission rules  7. Env injection  8. Approval/sandbox policy  9. Non-migratable items (keybindings, sessions, auth, model, MCP servers, etc.)
 
 **MCP servers are deliberately out of scope.** Every supported tool has them, and converting the
-definitions would be easy, but registering a server changes what the target tool can reach on the
-user's machine, and a server definition routinely carries an API key. This tool does neither on the
-user's behalf.
+definitions would be easy. The problem is what would arrive. A server definition routinely carries
+its credential inline, and this tool redacts secrets rather than copying them — so the server would
+land registered, listed, and non-functional until the user re-entered the key by hand. A server
+that looks migrated and does not work is worse than one the report tells them to move.
 
 Do not treat that as a reason to stay silent. Count the servers you find, list each one by name and
 source location under "Not migrated", and say plainly that MCP is out of scope so the user knows to
