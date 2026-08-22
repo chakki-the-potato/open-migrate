@@ -59,4 +59,17 @@ if stale or missing:
     sys.exit(1)
 
 print(f"OK: {len(directions)} golden direction(s) match the current knowledge docs")
+
+# A green build here protects only the directions that are frozen. Saying so is the
+# difference between "checked" and "checked what exists" — without this line a partially
+# frozen manifest reads as full coverage, which is the failure this whole gate exists to
+# prevent. Derived from core/tools/ so a fifth tool widens the gap rather than hiding in it.
+tools = sorted(p.stem for p in pathlib.Path("core/tools").glob("*.md") if p.stem != "_template")
+expected = {f"{s}-to-{t}" for s in tools for t in tools if s != t}
+unfrozen = sorted(expected - set(directions))
+if unfrozen:
+    print(
+        f"NOTE: {len(unfrozen)} of {len(expected)} home-scope direction(s) have no golden and "
+        f"are NOT gated by this check:\n      " + ", ".join(unfrozen)
+    )
 PY

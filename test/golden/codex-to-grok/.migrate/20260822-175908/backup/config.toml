@@ -1,0 +1,10 @@
+model = "grok-5-code"
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+EXISTING_KEY = "keep"
+
+[permission]
+allow = ["Bash(ls:*)"]

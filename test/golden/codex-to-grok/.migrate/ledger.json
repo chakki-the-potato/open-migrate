@@ -1,0 +1,38 @@
+{
+  "<REPO>/test/fixtures/codex-home/AGENTS.override.md": {
+    "sha256": "6b74fc3dc9a1ceb94637e973eb5ec6dc27b94af3ed0d2e17f44dcf9e19535482",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/config.toml": {
+    "sha256": "538c98097ed77cb92238aee72012e93352549b8926aa3e3f2c44c5271db1f896",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/hooks.json": {
+    "sha256": "615ab833854e4bbc01e428d5a0bb72247aa4885673e077034d25ea3371a397ad",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/rules/default.rules": {
+    "sha256": "0e881a040457f632f45cacc5cf8a685f288f5fe1762a1a09ace90e7f178ece90",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/agents/reviewer.toml": {
+    "sha256": "0efa833fb7955f7489856eda32892bca30d22f1aaa77b80e92f9d0b25798ce00",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/prompts/greet.md": {
+    "sha256": "513c44a59b150f4de142ba3f01a14f215e5ade46759f666c0d4c2a31df5d0a4f",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/keybindings.json": {
+    "sha256": "90642626c7c1185899c29da67ceff14cb336793c30c533318706ab56f1e2d136",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/skills/hello/SKILL.md": {
+    "sha256": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "run": "20260822-175908"
+  },
+  "<REPO>/test/fixtures/codex-home/skills/hello/reference/tone.md": {
+    "sha256": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "run": "20260822-175908"
+  }
+}

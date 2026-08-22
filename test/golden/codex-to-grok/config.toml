@@ -1,0 +1,15 @@
+model = "grok-5-code"
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+EXISTING_KEY = "keep"
+FIXTURE_FLAG = "1"
+SERVICE_API_KEY = "<REDACTED-REENTER>"
+TRUSTED_CLIENT_SHA256S = "02aa45f33f6384022cfc3e1045ad58ac1af9db9b095d259367f3a3fb6aaf33a7"
+
+[permission]
+allow = ["Bash(ls:*)", "Bash(git status:*)", "Bash(npm run build:*)", "Bash(npm run test:*)"]
+ask = ["Bash(git push:*)"]
+deny = ["Bash(rm:*)"]
