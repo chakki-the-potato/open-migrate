@@ -31,7 +31,8 @@ jobs:
           # through a computed path — shellcheck cannot follow it, and that is by design.
           shellcheck -S warning -e SC1090,SC1091 \
             install.sh scripts/build-plugin.sh scripts/check-version-bump.sh \
-            scripts/seed-target.sh scripts/verify-migration.sh
+            scripts/seed-target.sh scripts/verify-migration.sh \
+            scripts/freeze-golden.sh scripts/check-golden-fresh.sh
 
       - name: Distribution matches sources
         run: ./scripts/build-plugin.sh --check
@@ -57,6 +58,28 @@ jobs:
               sys.exit("invalid TOML:\n" + "\n".join(bad))
           print("TOML fixtures parse")
           PY
+          exit $fail
+
+      - name: Goldens match the knowledge docs that produced them
+        # The migration is performed by an agent reading core/, so CI cannot re-run it.
+        # Every other check here tests the verifier rather than the conversion, which means
+        # a wrong edit to a tool doc would otherwise ship green. This is the gate that
+        # forces the affected directions to be re-measured and re-frozen.
+        run: ./scripts/check-golden-fresh.sh
+
+      - name: Goldens still pass the verifier
+        run: |
+          fail=0
+          while IFS= read -r line; do
+            set -- $line
+            dir="$1"; source_tool="$2"; target_tool="$3"; scope="$4"
+            out="$(mktemp)"
+            if ./scripts/verify-migration.sh "test/golden/$dir" "$target_tool" "$source_tool" "$scope" > "$out" 2>&1; then
+              echo "$dir: PASS=$(grep -c '^PASS' "$out")"
+            else
+              echo "$dir: FAILED"; grep '^FAIL' "$out" | sed 's/^/  /'; fail=1
+            fi
+          done < <(jq -r '.directions | to_entries[] | "\(.key) \(.value.source) \(.value.target) \(.value.scope)"' test/golden/manifest.json)
           exit $fail
 
       - name: Seed produces a target the verifier rejects
@@ -99,6 +122,38 @@ jobs:
           probe grok           grok   codex  ""
           probe claude-project claude codex  project
           exit $fail
+
+      - name: npx installer puts the payload in place
+        run: |
+          # The installer is the only thing between a user and the docs, and it ships to a
+          # different registry than the plugin does. Check it against an isolated home.
+          export GROK_HOME="$(mktemp -d)/grok"
+          node bin/open-migrate.js grok
+          test -f "$GROK_HOME/skills/open-migrate/SKILL.md"
+          test -f "$GROK_HOME/skills/open-migrate/core/procedure.md"
+          diff -r skills/open-migrate "$GROK_HOME/skills/open-migrate"
+
+          # A pre-rename install must be removed, or it keeps answering to /migrate with a
+          # copy that never receives updates.
+          mkdir -p "$GROK_HOME/skills/migrate"
+          node bin/open-migrate.js grok > /dev/null
+          if [ -d "$GROK_HOME/skills/migrate" ]; then
+            echo "superseded /migrate install was not removed"; exit 1
+          fi
+
+          # An unknown tool name must fail rather than guessing.
+          if node bin/open-migrate.js windsurf 2>/dev/null; then
+            echo "unknown tool name was accepted"; exit 1
+          fi
+          echo "installer behaves"
+
+      - name: Packaged contents are only what ships
+        run: |
+          files=$(npm pack --dry-run --json | node -p "JSON.parse(require('fs').readFileSync(0))[0].files.map(f=>f.path).join('\n')")
+          echo "$files"
+          if echo "$files" | grep -qE '^(test|docs|scripts)/'; then
+            echo "::error::fixtures, docs, or scripts leaked into the npm package"; exit 1
+          fi
 
       - name: Seed refuses a real tool home
         run: |

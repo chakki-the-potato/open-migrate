@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          { "type": "command", "command": "echo pre-edit-check", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

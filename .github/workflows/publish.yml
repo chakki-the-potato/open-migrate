@@ -1,0 +1,57 @@
+name: publish
+
+# Publishing by hand is how a release surface goes stale. Pushing a v* tag is the only
+# way this package reaches npm, so the registry can never lag behind a release.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write        # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Tag must match the manifests
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          plug=$(node -p "require('./.claude-plugin/plugin.json').version")
+          echo "tag=$tag package.json=$pkg plugin.json=$plug"
+          if [ "$tag" != "$pkg" ] || [ "$tag" != "$plug" ]; then
+            echo "::error::tag $tag does not match package.json ($pkg) and plugin.json ($plug)"
+            exit 1
+          fi
+
+      - name: The payload must be present and current
+        run: |
+          # skills/ is a build artifact. Publishing a drifted copy would ship documentation
+          # that does not match the sources it was generated from.
+          ./scripts/build-plugin.sh --check
+          test -f skills/open-migrate/SKILL.md
+
+      - name: Install works from the packed tarball
+        run: |
+          # Pack and install exactly what npm would serve, then check the payload lands.
+          npm pack
+          tarball=$(ls open-migrate-*.tgz)
+          mkdir -p /tmp/probe && tar -xzf "$tarball" -C /tmp/probe
+          export GROK_HOME=/tmp/grokhome
+          node /tmp/probe/package/bin/open-migrate.js grok
+          test -f "$GROK_HOME/skills/open-migrate/SKILL.md"
+          test -f "$GROK_HOME/skills/open-migrate/core/procedure.md"
+          echo "packed tarball installs correctly"
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

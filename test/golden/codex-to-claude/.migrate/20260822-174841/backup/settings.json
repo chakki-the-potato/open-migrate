@@ -1,0 +1,10 @@
+{
+  "model": "claude-fable-5",
+  "env": { "EXISTING_KEY": "keep" },
+  "permissions": { "allow": ["Bash(ls:*)"], "deny": [] },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Read", "hooks": [ { "type": "command", "command": "echo existing-pre" } ] }
+    ]
+  }
+}

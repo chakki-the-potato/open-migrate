@@ -1,0 +1,26 @@
+{
+  "<REPO>/test/fixtures/grok-home/rules/global.md": {
+    "sha256": "6b74fc3dc9a1ceb94637e973eb5ec6dc27b94af3ed0d2e17f44dcf9e19535482",
+    "run": "20260822-181726"
+  },
+  "<REPO>/test/fixtures/grok-home/config.toml": {
+    "sha256": "12ac9d770cffcf66c926c4e83103c6c3eba762f74484e9e8b504d1e85f28bf34",
+    "run": "20260822-181726"
+  },
+  "<REPO>/test/fixtures/grok-home/hooks/migrated.json": {
+    "sha256": "a616b6cf4bd5619c3f9193c77a355c591db35d21718a8fce800f8c6b3415f44a",
+    "run": "20260822-181726"
+  },
+  "<REPO>/test/fixtures/grok-home/agents/reviewer.md": {
+    "sha256": "aa8fde4bf4953a116da4342472c363dac3949731e22dd20ac10c32db2a0dca4f",
+    "run": "20260822-181726"
+  },
+  "<REPO>/test/fixtures/grok-home/skills/hello/SKILL.md": {
+    "sha256": "aace0e3a3532778566d3e762c98646c8e5f549631451de00d538f3e864c1d716",
+    "run": "20260822-181726"
+  },
+  "<REPO>/test/fixtures/grok-home/skills/hello/reference/tone.md": {
+    "sha256": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "run": "20260822-181726"
+  }
+}

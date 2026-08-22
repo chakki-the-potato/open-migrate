@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build:*)"
+    ],
+    "deny": [
+      "Bash(curl:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo project-pre-edit",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

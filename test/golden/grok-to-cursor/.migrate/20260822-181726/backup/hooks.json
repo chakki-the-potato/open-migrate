@@ -1,0 +1,1 @@
+{ "version": 1, "hooks": { "sessionStart": [ { "command": "echo existing-session", "type": "command" } ] } }

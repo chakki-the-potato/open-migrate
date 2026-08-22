@@ -20,7 +20,7 @@ fi
 
 # Everything the plugin actually ships. Changes anywhere else (tests, docs/, the
 # README) do not reach an installed copy and so do not require a bump.
-shipped=$(git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills | wc -l | tr -d ' ')
+shipped=$(git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills bin package.json | wc -l | tr -d ' ')
 if [ "$shipped" -eq 0 ]; then
   echo "OK: no shipped content changed since $base"
   exit 0
@@ -37,8 +37,18 @@ fi
 if [ "$now" = "$was" ]; then
   echo "FAIL: $shipped shipped file(s) changed but version is still $now" >&2
   echo "      Bump .claude-plugin/plugin.json, or installed copies keep serving the old content." >&2
-  git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills | sed 's/^/      /' >&2
+  git diff --name-only "$base"...HEAD -- core adapters/open-migrate skills bin package.json | sed 's/^/      /' >&2
   exit 1
 fi
 
 echo "OK: shipped content changed and version moved $was -> $now"
+
+# The plugin manifest and the npm manifest are two release surfaces for the same content.
+# If they disagree, one of them ships stale files under a version number that claims
+# otherwise — the exact failure this script exists to prevent.
+pkg=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+if [ "$pkg" != "$now" ]; then
+  echo "FAIL: package.json is $pkg but .claude-plugin/plugin.json is $now — they must match" >&2
+  exit 1
+fi
+echo "OK: package.json matches at $pkg"

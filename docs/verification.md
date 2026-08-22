@@ -88,6 +88,52 @@ To check a rollback, compare against a fresh seed:
 
 A rolled-back target must be byte-identical to a seed, `.migrate/` excluded.
 
+## Goldens: what CI can and cannot catch
+
+Everything above is measured by hand. The migration is performed by an agent reading `core/`,
+so CI cannot re-run it — which left a hole: **every automated check in this repository tests the
+verifier, not the conversion.** A wrong edit to `core/tools/claude.md` shipped green.
+
+A golden closes it. `test/golden/<direction>/` holds a real migrated target, committed, together
+with `manifest.json` recording the sha256 of exactly the docs that direction depends on — the
+three shared ones plus its two tool docs. `check-golden-fresh.sh` recomputes those hashes on every
+build. A doc that moves ahead of the output it produced fails the build until the affected
+directions are re-run and re-frozen.
+
+Pinning is per direction on purpose. Editing `core/tools/cursor.md` marks the six Cursor
+directions stale and leaves the other six alone; a blunt all-or-nothing gate is the kind people
+stop honoring.
+
+**All twelve directions and project scope are frozen**, so a doc edit cannot reach `main` without
+the affected outputs being re-measured. When a direction is missing the gate says so by name on
+every build — a partially frozen manifest otherwise reads as full coverage, which is the exact
+failure this whole thing exists to prevent. The expected set is derived from `core/tools/`, so
+adding a fifth tool widens the reported gap rather than hiding inside it.
+
+One property the gate does not have, stated so nobody assumes otherwise: it cannot tell a
+*correct* regeneration from a careless one. It proves the golden was produced by the current
+docs, not that whoever produced it was paying attention.
+
+### Regenerating one
+
+```
+./scripts/seed-target.sh claude /tmp/g          # the pre-migration state
+/open-migrate codex claude                      # pointed at /tmp/g
+./scripts/verify-migration.sh /tmp/g claude codex
+./scripts/freeze-golden.sh codex claude /tmp/g
+```
+
+**Read `core/` from this repository, never the installed skill.** An installed copy lags behind
+until you push, bump, and update, so a golden generated against it gets pinned to repository
+hashes it was not produced from — the one failure this gate cannot detect, because the manifest
+would look correct. This is not hypothetical: the first golden was nearly generated against an
+installed `procedure.md` two commits old.
+
+`freeze-golden.sh` refuses a target holding more than one run, and refuses a run whose report says
+"already migrated" — a ledger no-op would freeze an empty diff as the expected output and every
+content check would pass against a target that never changed. Absolute paths in the run artifacts
+are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machine.
+
 ## What is not covered
 
 - **A Cursor source has no secret-report coverage.** Its only secret-bearing surface was

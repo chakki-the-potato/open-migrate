@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "echo existing-session",
+        "type": "command"
+      },
+      {
+        "command": "/Users/dev/.codex/hooks/notify.sh session-start",
+        "type": "command"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "echo pre-edit-check",
+        "type": "command",
+        "timeout": 10,
+        "matcher": "Write"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "echo post-tool",
+        "type": "command",
+        "timeout": 8,
+        "matcher": "Shell|Write|Grep|mcp__.*"
+      }
+    ]
+  }
+}

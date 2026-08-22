@@ -1,0 +1,32 @@
+{
+  "run": "20260822-175908",
+  "root": "<TARGET>",
+  "modified": [
+    "AGENTS.md",
+    "config.toml"
+  ],
+  "created": [
+    "skills/hello/SKILL.md",
+    "skills/hello/reference/tone.md",
+    "skills/greet/SKILL.md",
+    "agents/reviewer.md",
+    "hooks/migrated.json"
+  ],
+  "created_dirs": [
+    "skills",
+    "skills/hello",
+    "skills/hello/reference",
+    "skills/greet",
+    "agents",
+    "hooks"
+  ],
+  "after": {
+    "AGENTS.md": "e22e209db86951c856960ad30bb74653a582a5e33e623f487821d90c726b24b6",
+    "config.toml": "b346f5d71bee96c0ad3f2a665b929034cf4b5683abb70746f03e0b6bdf3873ce",
+    "skills/hello/SKILL.md": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "skills/hello/reference/tone.md": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "skills/greet/SKILL.md": "4e15a63992f085b2f505772cea62b8ee2677c69cfbdf790a1752d64d722318c0",
+    "agents/reviewer.md": "6d836a120c57e516ff1ee5daef83d9e424f04025470778672bea40a23d649d36",
+    "hooks/migrated.json": "7601f6c4dbf740be5138d563615aedd0e4cd06881739828f96355354504890df"
+  }
+}
