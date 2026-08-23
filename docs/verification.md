@@ -87,6 +87,22 @@ Verified against five states: a clean seed (accepted), a single stray file, a ba
 directory, a fully migrated golden, and an emptied target — the last one because a wiped target
 would otherwise pass "nothing was written" for the wrong reason.
 
+## Report accounting
+
+procedure.md requires every scan-summary row to satisfy
+
+```
+Found = Automatic + Approximate + Suggestion + Skipped + Excluded + Impossible
+```
+
+and to carry all nine checklist categories. `./scripts/check-scan-summary.sh` verifies both
+across every frozen report, and CI runs it.
+
+The report is the only place a run states how much it found against how much it moved, so a
+table that does not balance is either a run whose accounting is wrong or a table edited without
+re-deriving it. The check catches an unbalanced row, a missing category, and a table still in an
+older column format — all three verified by breaking a golden on purpose.
+
 ## Running it yourself
 
 Seed a target first, then migrate into it:
