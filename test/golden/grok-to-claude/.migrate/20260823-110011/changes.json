@@ -1,0 +1,26 @@
+{
+  "run": "20260823-110011",
+  "root": "<TARGET>",
+  "modified": [
+    "settings.json",
+    "CLAUDE.md"
+  ],
+  "created": [
+    "skills/hello/SKILL.md",
+    "skills/hello/reference/tone.md",
+    "agents/reviewer.md"
+  ],
+  "created_dirs": [
+    "skills",
+    "skills/hello",
+    "skills/hello/reference",
+    "agents"
+  ],
+  "after": {
+    "settings.json": "bae398cdb271e554f102063fc0ffd6ecd2cdfbd7595a68c6f45d6e979f3663dc",
+    "CLAUDE.md": "bba296f6a1b71702b4b91e33bf76714e3c8d493e5b67e4e6507b5b75b37e085e",
+    "skills/hello/SKILL.md": "c6b921658928376eee3e85135c206ff6216177f3986566cc4b01431ed839bef5",
+    "skills/hello/reference/tone.md": "e3b04ed732520c91695cfe598ac694be8945279451c330d3809335594c9984b9",
+    "agents/reviewer.md": "6d836a120c57e516ff1ee5daef83d9e424f04025470778672bea40a23d649d36"
+  }
+}

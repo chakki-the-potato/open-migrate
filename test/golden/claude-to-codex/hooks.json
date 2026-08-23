@@ -4,7 +4,11 @@
       {
         "matcher": "apply_patch",
         "hooks": [
-          { "type": "command", "command": "echo pre-edit-check", "timeout": 10 }
+          {
+            "type": "command",
+            "command": "echo pre-edit-check",
+            "timeout": 10
+          }
         ]
       }
     ]

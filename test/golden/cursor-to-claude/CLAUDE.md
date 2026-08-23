@@ -2,7 +2,7 @@
 
 Keep me.
 
-## Migrated from cursor (2026-08-22)
+## Migrated from cursor (2026-08-23)
 
 ### AGENTS.md
 
