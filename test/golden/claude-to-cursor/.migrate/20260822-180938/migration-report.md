@@ -5,17 +5,17 @@ Target root: `test/tmp/golden-run/claude-to-cursor` (test mode)
 Scope: home only — no project root was given, which is why the global rules below could not be written.
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 0 | 0 | 0 | 0 | 1 |
-| Skills | 1 | 1 | 0 | 0 | 0 | 0 |
-| Commands / prompts | 1 | 0 | 1 | 0 | 0 | 0 |
-| Subagents | 1 | 1 | 0 | 0 | 0 | 0 |
-| Hooks | 3 | 0 | 1 | 0 | 0 | 2 |
-| Permission rules | 5 | 4 | 0 | 0 | 0 | 1 |
-| Env injection | 2 | 0 | 0 | 0 | 0 | 2 |
-| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 |
-| Non-migratable items | 2 | 0 | 0 | 0 | 0 | 2 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
+| Skills | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Hooks | 3 | 0 | 1 | 0 | 0 | 0 | 2 |
+| Permission rules | 5 | 4 | 0 | 0 | 0 | 0 | 1 |
+| Env injection | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| Non-migratable items | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 
 ## Migrated (automatic)
 - Skills: `skills/hello/` → `skills/hello/` (SKILL.md and reference/tone.md). Written under `skills/`, never `skills-cursor/`, which is app-managed.

@@ -5,17 +5,17 @@ Target root: `test/tmp/golden-run/grok-to-cursor` (test mode)
 Scope: home only — no project root was given, which is why the global rules below could not be written.
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 0 | 0 | 0 | 0 | 1 |
-| Skills | 1 | 0 | 1 | 0 | 0 | 0 |
-| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 |
-| Subagents | 1 | 0 | 1 | 0 | 0 | 0 |
-| Hooks | 2 | 0 | 1 | 0 | 0 | 1 |
-| Permission rules | 5 | 4 | 0 | 0 | 0 | 1 |
-| Env injection | 2 | 0 | 0 | 0 | 0 | 2 |
-| Approval/sandbox policy | 2 | 0 | 0 | 1 | 0 | 1 |
-| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 3 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
+| Skills | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Hooks | 2 | 0 | 1 | 0 | 0 | 0 | 1 |
+| Permission rules | 5 | 4 | 0 | 0 | 0 | 0 | 1 |
+| Env injection | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| Approval/sandbox policy | 2 | 0 | 0 | 1 | 0 | 0 | 1 |
+| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 
 ## Migrated (automatic)
 - Permissions: `Bash(git status:*)` → `Shell(git status:*)`. Grok uses Claude's syntax, so the tool token is renamed to Cursor's; the colon argument form is identical and kept as-is.

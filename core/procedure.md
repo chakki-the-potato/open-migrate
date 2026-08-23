@@ -153,7 +153,10 @@ Mark any item with a detected secret as `<REDACTED-REENTER>` in the plan table.
 
 ## Step 3: Confirm
 
-- Present the plan table to the user and get approval. Allow excluding whole categories.
+- Present the plan table to the user and get approval. **The table is one row per item, and so
+  is the approval** — they can drop individual rows, not only whole categories. "Skip all skills"
+  is that same choice expressed once; do not make it the only granularity on offer, because the
+  table already showed them the items and they will reasonably expect to pick among them.
 - Items that conflict with something already in the target (same-name skill, env key with a different value) are confirmed individually here.
 - **Write nothing before approval.** If the user stops, end the run leaving only the plan table.
 
@@ -247,11 +250,15 @@ Write `.migrate/<run-id>/migration-report.md` and print the same content to the 
 # Migration Report: <source> → <target> (<run-id>)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
 - Write **all nine** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
 - **Skipped** counts items the target already has — a same-name skill, a subagent, an env key with the same value. These are neither failures nor conversions, and forcing them into Impossible misreports a healthy run as a broken one. On a real machine this is often the largest column: 33 subagents skipped because the same plugin is installed on both sides is a normal outcome, not 33 losses.
-- Every row must satisfy `Found = Automatic + Approximate + Suggestion + Skipped + Impossible`. If it does not, a category is missing from your accounting.
+- **Excluded** counts items the user dropped at Confirm. Keep it apart from Skipped: Skipped is
+  the tool declining to overwrite something, Excluded is the user declining to migrate something,
+  and a reader scanning the table cannot recover which is which once they are added together.
+  Zero is the normal value — a fully approved run has an empty column.
+- Every row must satisfy `Found = Automatic + Approximate + Suggestion + Skipped + Excluded + Impossible`. If it does not, a category is missing from your accounting.
 
 ## Migrated (automatic)
 - <category>: <item> → <target location>
@@ -265,7 +272,9 @@ In a project-scope run, append the git tracking status to every line that names 
 - <item> (<source file path>): <what the user must do> (for secret re-entry, key name and location only)
 
 ## Not migrated
-- <item> (<source file path>): <reason> (disabled server, keybinding, session, auth, etc.)
+- <item> (<source file path>): <reason> (excluded at your request, keybinding, session, auth, etc.)
+
+Items the user dropped at Confirm belong here, with `excluded at your request` as the reason. They were migratable; recording them as impossible would blame the tool for the user's decision.
 
 Every entry must include the source file path (for example `keybindings.json`, or the server name in `config.toml`). For settings you did not migrate (model name and the like), **quote the current value verbatim** — never name the category and omit the value. For approval/sandbox policy suggestions, give **the source-side field name with its current value** and **the target-side concept name with the suggested value** together (Codex uses `approval_policy` and `sandbox_mode`, Claude `permissions.defaultMode`, Cursor `approvalMode`, Grok `[ui] permission_mode`). Which name plays which role depends on which tool is the source.
 

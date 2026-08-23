@@ -4,17 +4,17 @@ Source root: `test/fixtures/codex-home` (test mode)
 Target root: `test/tmp/golden-run/codex-to-claude` (test mode)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 1 | 0 | 0 | 0 | 0 |
-| Skills | 1 | 1 | 0 | 0 | 0 | 0 |
-| Commands / prompts | 1 | 1 | 0 | 0 | 0 | 0 |
-| Subagents | 1 | 1 | 0 | 0 | 0 | 0 |
-| Hooks | 5 | 3 | 2 | 0 | 0 | 0 |
-| Permission rules | 7 | 4 | 0 | 0 | 0 | 3 |
-| Env injection | 3 | 2 | 1 | 0 | 0 | 0 |
-| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 |
-| Non-migratable items | 6 | 0 | 0 | 0 | 0 | 6 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Skills | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Hooks | 5 | 3 | 2 | 0 | 0 | 0 | 0 |
+| Permission rules | 7 | 4 | 0 | 0 | 0 | 0 | 3 |
+| Env injection | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
+| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| Non-migratable items | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 
 ## Migrated (automatic)
 - Global rules: `AGENTS.override.md` → `CLAUDE.md` under `## Migrated from codex (2026-08-22)` / `### AGENTS.override.md`. The `@~/.agent-rules-fixture.md` import line was carried over verbatim and not expanded.

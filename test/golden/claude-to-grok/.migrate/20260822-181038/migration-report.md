@@ -4,17 +4,17 @@ Source root: `test/fixtures/claude-home` (test mode)
 Target root: `test/tmp/golden-run/claude-to-grok` (test mode)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 1 | 0 | 0 | 0 | 0 |
-| Skills | 1 | 1 | 0 | 0 | 0 | 0 |
-| Commands / prompts | 1 | 0 | 1 | 0 | 0 | 0 |
-| Subagents | 1 | 1 | 0 | 0 | 0 | 0 |
-| Hooks | 3 | 2 | 0 | 0 | 0 | 1 |
-| Permission rules | 5 | 5 | 0 | 0 | 0 | 0 |
-| Env injection | 2 | 1 | 1 | 0 | 0 | 0 |
-| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 |
-| Non-migratable items | 2 | 0 | 0 | 0 | 0 | 2 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Skills | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Hooks | 3 | 2 | 0 | 0 | 0 | 0 | 1 |
+| Permission rules | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
+| Env injection | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
+| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| Non-migratable items | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 
 ## Migrated (automatic)
 - Global rules: `CLAUDE.md` → `AGENTS.md` under `## Migrated from claude (2026-08-22)` / `### CLAUDE.md`. The `@~/.agent-rules-fixture.md` import line was carried over verbatim and **not expanded**. Written to the single `AGENTS.md` rather than `rules/`, which is easier to trace and has identical effect since every `rules/*.md` is loaded anyway.
