@@ -66,6 +66,27 @@ source, 43 of them over 200 characters, the longest 806 — none of which could 
 
 That run is also what found the missing rule for alternation matchers.
 
+## The approval gate
+
+"Nothing is written before you approve" is the claim the rest of the safety model rests on, so
+it has its own check:
+
+```
+./scripts/verify-declined.sh <target root> <tool>
+```
+
+A target that stopped at Confirm must be byte-identical to a fresh seed **and** carry no
+`.migrate/` at all — the run directory is created in Step 4, so a run that stopped at Step 3 has
+no backup, no report, and no ledger to keep. A run directory here means writing began before
+approval.
+
+CI runs it for all four tools and, more importantly, asserts that a fully migrated tree is
+*rejected* by it. A check that accepts both states proves nothing.
+
+Verified against five states: a clean seed (accepted), a single stray file, a bare `.migrate/`
+directory, a fully migrated golden, and an emptied target — the last one because a wiped target
+would otherwise pass "nothing was written" for the wrong reason.
+
 ## Running it yourself
 
 Seed a target first, then migrate into it:

@@ -195,6 +195,39 @@ with their original text so you can paste them in.
 
 ---
 
+## What it rewrites, and what it leaves alone
+
+The short answer: **your prose is copied, never reworded.** What changes is the container
+around it.
+
+Copied byte for byte:
+
+- **Rule text.** Your `AGENTS.md` or `CLAUDE.md` body lands in the destination unchanged — not
+  summarized, not reworded, not reordered. Heading levels are left as you wrote them even when
+  that produces an odd nesting under the merge heading, because preserving the original wins.
+- **`@path` import lines,** carried across as-is and never expanded into the file they point at.
+- **Skills,** copied as whole directories, supporting files included.
+- **Substitution tokens** like `$ARGUMENTS` and `$1`-`$9`, kept exactly so a command still works
+  where the destination supports them — and left as literal text, with a note in the report,
+  where it does not.
+- **Rules that could not be converted,** reproduced in full in the report so you can enter them
+  by hand.
+- **Values that are not portable,** such as a model name, quoted in the report rather than
+  silently dropped.
+
+Rewritten, because the destination cannot read the original form:
+
+- **File format** — TOML becomes JSON becomes markdown frontmatter, depending on what the
+  destination reads.
+- **Permission syntax** — Codex's argv-prefix rules become the destination's pattern strings,
+  where that is possible at all.
+- **Hook tool names** — Codex's `apply_patch` becomes Claude's `Edit|Write`, and so on.
+- **Secrets** — replaced with `<REDACTED-REENTER>`. This is the one case where your value is
+  deliberately not carried over.
+
+Every rewrite of the second kind is named in the report. If something was approximated, you are
+told what was lost and how.
+
 ## Where loss happens
 
 Permission models differ in expressiveness, so approximation is unavoidable. The report labels
