@@ -215,6 +215,44 @@ answer lying in the working directory of the run.
 content check would pass against a target that never changed. Absolute paths in the run artifacts
 are rewritten to `<REPO>` and `<TARGET>` so the tree is identical on every machine.
 
+## What a blind worktree does not blind
+
+`scripts/blind-worktree.sh` removes `test/golden/` from disk so a regeneration cannot read the
+answer it is about to replace. Two ways in remain open, and both were hit in practice rather
+than theorised.
+
+**Session memory is injected before the run starts.** A session on this machine receives a
+summary of earlier sessions' observations at startup — nobody asks for it, it is simply there.
+One regeneration found entries in its own context naming the exact report values it was about to
+derive: which environment variables needed their value quoted, which digest belonged in which
+report. The worktree had removed the goldens from disk and the answer arrived anyway. The agent
+disclosed this before starting, which is the only reason the round is labelled honestly.
+
+**A session that already produced a golden is not blind to it on a second pass.** The same
+session regenerating its own earlier output is reproducing, not deriving, whatever else the
+worktree hides. Continuing in the same session costs the entire point of the exercise for the
+directions it already made.
+
+So a regeneration is only as blind as its session is fresh, and freshness is not something the
+script can supply. When it matters, the run needs a session that has produced none of the
+affected directions and has memory injection disabled — and when that is not available, the
+round should be described as a regeneration rather than a verification. Two rounds in this
+repository's history were genuinely blind; one was not, and its commit says so.
+
+## A conflict the docs have not resolved
+
+Project-scope runs sourced from Codex hit a rule that cannot be followed.
+
+`core/tools/codex.md` says to check the home `~/.codex/config.toml` for a `[projects."<path>"]`
+trust entry, because a project layer with no entry is configuration Codex has been ignoring —
+worth telling the user about. `core/procedure.md` says a side in test mode must never read that
+tool's real home. A project-scope run against a fixture is always in test mode on the source
+side, so the check is always forbidden exactly where it is always required.
+
+The regeneration recorded "could not be determined" with the reason rather than asserting the
+entry was absent, which is the honest reading: claiming absence would be a false statement about
+a file that was never opened. The underlying conflict is still open.
+
 ## What is not covered
 
 - **A Cursor source has no secret-report coverage.** Its only secret-bearing surface was

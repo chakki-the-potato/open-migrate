@@ -4,11 +4,7 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          {
-            "type": "command",
-            "command": "echo pre-edit-check",
-            "timeout": 10
-          }
+          { "type": "command", "command": "echo pre-edit-check", "timeout": 10 }
         ]
       }
     ],
@@ -16,10 +12,7 @@
       {
         "matcher": "",
         "hooks": [
-          {
-            "type": "command",
-            "command": "echo notify"
-          }
+          { "type": "command", "command": "echo notify" }
         ]
       }
     ]
