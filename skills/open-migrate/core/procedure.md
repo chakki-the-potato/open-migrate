@@ -163,6 +163,22 @@ Group the plan table by category but write **one row per item** — a single cat
 
 Mark any item with a detected secret as `<REDACTED-REENTER>` in the plan table.
 
+**Number every row.** The user has to be able to point at one, and a number is the shortest way
+to do it. Numbering is for their convenience, not a syntax they owe you — accept a number, an
+item's name, or a category name equally, and ask again if what they said matches nothing.
+
+**Collapse rows that share a treatment; never collapse away addressability.** "One row per item"
+is about not hiding differences, and printing thirty-three identically-handled subagents on
+thirty-three lines hides them in a different way — a plan nobody reads is not a plan. When
+several items in a category get exactly the same treatment for exactly the same reason, give
+them one row with a count. When treatments differ, split: thirty-three subagents where two
+collide with existing names is two rows, `31 automatic` and `2 skipped`, not one row and not
+thirty-three.
+
+The collapse is a display choice and nothing more. A user who names a single item inside a
+collapsed row — "drop gsd-debugger" — is making a valid request, and the run must honour it and
+report it as one excluded item. If they ask to see what a collapsed row contains, list it.
+
 ## Step 3: Confirm
 
 - Present the plan table to the user and get approval. **The table is one row per item, and so
