@@ -277,7 +277,7 @@ duplicated.
 ## Is it actually tested?
 
 Yes, and the numbers are measured rather than claimed. All twelve directions pass a deterministic
-verifier — 51 to 81 checks each — after really migrating a fixture. An empty target fails 43 of
+verifier — 49 to 81 checks each — after really migrating a fixture. An empty target fails 41 of
 them, so the verifier is not rubber-stamping.
 
 What makes that affordable: there are **no per-direction converters**. Each tool has one
