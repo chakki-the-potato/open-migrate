@@ -12,17 +12,17 @@ Project root: `test/tmp/golden-run/codex-to-claude-project`
 The outer repository's working tree does hold uncommitted changes. Normally that stops a project migration, because writes would land in the same working tree and undoing them with `git checkout .` would take the user's work with them. It does not apply here: the project path is ignored, so these writes produce no entry in that working tree and cannot collide with anything in it.
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 1 | 0 | 0 | 0 | 0 |
-| Skills | 2 | 2 | 0 | 0 | 0 | 0 |
-| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 |
-| Subagents | 0 | 0 | 0 | 0 | 0 | 0 |
-| Hooks | 1 | 0 | 1 | 0 | 0 | 0 |
-| Permission rules | 2 | 2 | 0 | 0 | 0 | 0 |
-| Env injection | 0 | 0 | 0 | 0 | 0 | 0 |
-| Approval/sandbox policy | 0 | 0 | 0 | 0 | 0 | 0 |
-| Non-migratable items | 1 | 0 | 0 | 0 | 0 | 1 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Skills | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Subagents | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Hooks | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Permission rules | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
+| Env injection | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Approval/sandbox policy | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Non-migratable items | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 
 ## Migrated (automatic)
 - Global rules: `AGENTS.md` → `CLAUDE.md` under `## Migrated from codex (2026-08-22)` / `### AGENTS.md` (git tracked: no — answered by `<REPO>`, and the path is ignored). **The root `CLAUDE.md` was chosen over `.claude/CLAUDE.md`**: it is the location Claude Code documents first, and repositories frequently ignore the whole `.claude/` directory, which would hide the rules from the team they are for. The root file already existed, so its content was preserved and the migrated section appended.

@@ -68,6 +68,9 @@ jobs:
         # forces the affected directions to be re-measured and re-frozen.
         run: ./scripts/check-golden-fresh.sh
 
+      - name: Scan summaries add up
+        run: ./scripts/check-scan-summary.sh
+
       - name: Goldens still pass the verifier
         run: |
           fail=0

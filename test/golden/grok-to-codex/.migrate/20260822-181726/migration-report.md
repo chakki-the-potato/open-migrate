@@ -4,17 +4,17 @@ Source root: `test/fixtures/grok-home` (test mode)
 Target root: `test/tmp/golden-run/grok-to-codex` (test mode)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 1 | 0 | 0 | 0 | 0 |
-| Skills | 1 | 0 | 1 | 0 | 0 | 0 |
-| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 |
-| Subagents | 1 | 0 | 1 | 0 | 0 | 0 |
-| Hooks | 2 | 0 | 1 | 0 | 0 | 1 |
-| Permission rules | 5 | 5 | 0 | 0 | 0 | 0 |
-| Env injection | 2 | 1 | 1 | 0 | 0 | 0 |
-| Approval/sandbox policy | 2 | 0 | 0 | 1 | 0 | 1 |
-| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 3 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Skills | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Hooks | 2 | 0 | 1 | 0 | 0 | 0 | 1 |
+| Permission rules | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
+| Env injection | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
+| Approval/sandbox policy | 2 | 0 | 0 | 1 | 0 | 0 | 1 |
+| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 
 ## Migrated (automatic)
 - Global rules: `rules/global.md` → `AGENTS.md` under `## Migrated from grok (2026-08-22)` / `### global.md`. Grok loads every `rules/*.md` alphabetically; this home holds one. The `@~/.agent-rules-fixture.md` import was carried over verbatim and not expanded. The target has no `AGENTS.override.md`, so the merge was safe.

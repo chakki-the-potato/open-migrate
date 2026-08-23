@@ -4,17 +4,17 @@ Source root: `test/fixtures/cursor-home` (test mode)
 Target root: `test/tmp/golden-run/cursor-to-claude` (test mode)
 
 ## Scan summary
-| Category | Found | Automatic | Approximate | Suggestion | Skipped | Impossible |
-|---|---|---|---|---|---|---|
-| Global rules | 1 | 1 | 0 | 0 | 0 | 0 |
-| Skills | 1 | 1 | 0 | 0 | 0 | 0 |
-| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 |
-| Subagents | 1 | 0 | 1 | 0 | 0 | 0 |
-| Hooks | 1 | 0 | 1 | 0 | 0 | 0 |
-| Permission rules | 4 | 4 | 0 | 0 | 0 | 0 |
-| Env injection | 0 | 0 | 0 | 0 | 0 | 0 |
-| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 |
-| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 3 |
+| Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
+|---|---|---|---|---|---|---|---|
+| Global rules | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Skills | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| Commands / prompts | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Subagents | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Hooks | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| Permission rules | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
+| Env injection | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Approval/sandbox policy | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| Non-migratable items | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 
 ## Migrated (automatic)
 - Global rules: `AGENTS.md` → `CLAUDE.md` under `## Migrated from cursor (2026-08-22)` / `### AGENTS.md`. Cursor reads `AGENTS.md` natively, so it counts as a rule source even though the home holds no `.mdc` files — concluding "no rules to migrate" from the absence of `.mdc` would have stranded the whole file. The `@~/.agent-rules-fixture.md` import was carried over verbatim and not expanded.
