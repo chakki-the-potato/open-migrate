@@ -5,7 +5,7 @@
       "target": "codex",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -17,7 +17,7 @@
       "target": "cursor",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -29,7 +29,7 @@
       "target": "grok",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -41,7 +41,7 @@
       "target": "claude",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -53,7 +53,7 @@
       "target": "claude",
       "scope": "project",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -65,7 +65,7 @@
       "target": "cursor",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/codex.md": "0e16ebbfb2149005a2a2923fd496416aa4ba3be93d83b81ad697885ab79c8ec3",
@@ -77,7 +77,7 @@
       "target": "grok",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/codex.md": "0e16ebbfb2149005a2a2923fd496416aa4ba3be93d83b81ad697885ab79c8ec3",
@@ -89,7 +89,7 @@
       "target": "claude",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -101,7 +101,7 @@
       "target": "codex",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/codex.md": "0e16ebbfb2149005a2a2923fd496416aa4ba3be93d83b81ad697885ab79c8ec3",
@@ -113,7 +113,7 @@
       "target": "grok",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/cursor.md": "19043815ce12b1513d55da4f5566a2d26e6e192143dced7521b99eb866950ae2",
@@ -125,7 +125,7 @@
       "target": "claude",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/claude.md": "243b84530a1caf988f6819c89d1171424658a2fac4adf46545d657ccca16b0fa",
@@ -137,7 +137,7 @@
       "target": "codex",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/codex.md": "0e16ebbfb2149005a2a2923fd496416aa4ba3be93d83b81ad697885ab79c8ec3",
@@ -149,7 +149,7 @@
       "target": "cursor",
       "scope": "home",
       "docs": {
-        "core/procedure.md": "b229e80c25964422bffb0ac472f5547e59a84c36b1090d0ac5509502521b1a05",
+        "core/procedure.md": "cc384c90ccb6c96f95d02c1b330a2394edebe906e723d081a63c70d3d30203ea",
         "core/security.md": "2207ef6a43d9a619d2055686be9af32543653b796dc0d68718b6ca5eea18cfaf",
         "core/rollback.md": "5992f71017f873c24754ffbd0ed3ee6b57878440e9ac21117ece4667025e7241",
         "core/tools/cursor.md": "19043815ce12b1513d55da4f5566a2d26e6e192143dced7521b99eb866950ae2",

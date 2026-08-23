@@ -96,6 +96,15 @@ chk "ledger exists"                    test -f "$TARGET/.migrate/ledger.json"
 chk "ledger is valid JSON"             jq -e . "$TARGET/.migrate/ledger.json"
 chk "ledger records source hashes"     jq -e '[..|strings] | map(select(test("^[0-9a-f]{64}$"))) | unique | length >= 5' "$TARGET/.migrate/ledger.json"
 
+# An empty matcher is not a matcher (core/procedure.md). A source that writes "" and a
+# source that omits the key mean the same thing, so carrying "" through makes the target
+# file depend on which tool the hook came from. Every written JSON under the target is
+# scanned rather than a known list of hook files, because the next tool's hooks will live
+# somewhere this script has not been taught about, and the rule applies there too.
+chk_not "no empty matcher written" \
+  bash -c 'find "$1" -name "*.json" -not -path "*/.migrate/*" -print0 \
+    | xargs -0 -r jq -e "[..|objects|select(has(\"matcher\") and .matcher == \"\")] | length > 0" >/dev/null 2>&1' _ "$TARGET"
+
 # Secrets must never leak
 chk_not "no config secret leaked"      grep -rqF "FAKE-SECRET-123" "$TARGET"
 chk_not "auth.json never copied"       grep -rqF "AUTH-FAKE-SECRET" "$TARGET"
