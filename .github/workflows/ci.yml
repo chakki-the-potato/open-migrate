@@ -177,6 +177,34 @@ jobs:
             echo "::error::fixtures, docs, or scripts leaked into the npm package"; exit 1
           fi
 
+      - name: Declining at Confirm leaves the target untouched
+        run: |
+          # "Write nothing before approval" is the claim the rest of the safety model rests
+          # on. Every other check inspects a target after a migration; this one inspects a
+          # target that was deliberately not migrated. A seeded target IS the post-decline
+          # state, so it must pass — and a migrated one must not, or the check proves nothing.
+          root="$(mktemp -d)"
+          fail=0
+          for tool in claude codex cursor grok; do
+            ./scripts/seed-target.sh "$tool" "$root/$tool" > /dev/null
+            if ./scripts/verify-declined.sh "$root/$tool" "$tool" > "$root/$tool.out" 2>&1; then
+              echo "$tool: declined state accepted"
+            else
+              echo "$tool: a seeded target should pass but did not"
+              cat "$root/$tool.out"; fail=1
+            fi
+          done
+
+          # The load-bearing half: a fully migrated tree must be rejected.
+          cp -R test/golden/codex-to-claude "$root/migrated"
+          if ./scripts/verify-declined.sh "$root/migrated" claude > /dev/null 2>&1; then
+            echo "a migrated target passed the declined check — the check asserts nothing"
+            fail=1
+          else
+            echo "migrated target rejected, as it must be"
+          fi
+          exit $fail
+
       - name: Seed refuses a real tool home
         run: |
           mkdir -p "$HOME/.claude"
