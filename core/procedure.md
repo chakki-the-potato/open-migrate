@@ -118,6 +118,18 @@ The same reasoning applies to any other path a target reads natively — check t
 1. Global rules  2. Skills  3. Commands/prompts  4. Subagents  5. Hooks
 6. Permission rules  7. Env injection  8. Approval/sandbox policy  9. Non-migratable items (keybindings, sessions, auth, model, MCP servers, etc.)
 
+**An item is counted under its own category, even when it cannot be migrated.** A rules file the
+source ignores is still a global rule; an inheritance setting with no target concept is still env
+injection. Both belong in categories 1 and 7 with `Impossible`, not in category 9.
+
+Category 9 holds what belongs to no other category — keybindings, session history, the auth file,
+the model name. It is a home for the homeless, not a bucket for everything that failed.
+
+This is easy to get wrong and easy to miss, because the totals balance either way: file an item
+under 9 instead and every row still satisfies the identity below, so no check objects. What it
+costs is the per-category `Impossible` column, which goes permanently empty once every failure
+lands in 9 — and with it the answer to "of my four env settings, how many made it".
+
 **MCP servers are deliberately out of scope.** Every supported tool has them, and converting the
 definitions would be easy. The problem is what would arrive. A server definition routinely carries
 its credential inline, and this tool redacts secrets rather than copying them — so the server would
@@ -252,7 +264,7 @@ Write `.migrate/<run-id>/migration-report.md` and print the same content to the 
 ## Scan summary
 | Category | Found | Automatic | Approximate | Suggestion | Skipped | Excluded | Impossible |
 |---|---|---|---|---|---|---|---|
-- Write **all nine** checklist categories, one row each. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
+- Write **all nine** checklist categories, one row each, **spelled exactly as the checklist spells them** — `Commands/prompts`, not `Commands / prompts`. A row label that drifts makes two runs of the same direction incomparable for no reason. Categories with nothing found still get a `0` (this is where Step 1's "never stay silent" is honored).
 - **Skipped** counts items the target already has — a same-name skill, a subagent, an env key with the same value. These are neither failures nor conversions, and forcing them into Impossible misreports a healthy run as a broken one. On a real machine this is often the largest column: 33 subagents skipped because the same plugin is installed on both sides is a normal outcome, not 33 losses.
 - **Excluded** counts items the user dropped at Confirm. Keep it apart from Skipped: Skipped is
   the tool declining to overwrite something, Excluded is the user declining to migrate something,
