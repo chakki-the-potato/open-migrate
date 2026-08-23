@@ -255,17 +255,6 @@ a file that was never opened. The underlying conflict is still open.
 
 ## What is not covered
 
-- **The shape of a hook object written into Claude Code depends on where it came from.** A
-  non-tool-scoped event arrives with `{"matcher": "", ...}` from a Codex source and without the
-  key at all from a Grok source, and both are frozen that way. Neither is rejected: sampling
-  configs in real use shows Claude Code accepting both shapes for events that are not tool-scoped,
-  while tool-scoped events always carry a matcher. So no user has a broken file. What is wrong is
-  that the target's schema is being decided by a property of the input that has nothing to do with
-  the target, which means two people migrating the same hook into the same tool get different
-  files. `core/tools/claude.md` states the structure and does not say what to do when the source
-  object has no matcher, which is the gap. Fixing it edits a doc the golden gate pins, so the
-  claude-target directions have to be re-frozen from a session that produced none of them.
-
 - **A Cursor source has no secret-report coverage.** Its only secret-bearing surface was
   `mcp.json`, and MCP is no longer migrated; Cursor has no environment-variable surface to move
   the case into. The gap is structural, not an omission. Every other source carries a
