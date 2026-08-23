@@ -61,9 +61,19 @@ cp -R "$migrated_abs/." "$dest/"
 
 # Rewrite machine-specific prefixes. Longest first: migrated_abs often sits under repo_dir,
 # and replacing the shorter one first would leave a half-substituted path behind.
+#
+# The third rule is for a run driven from a blind worktree. Those live outside this checkout,
+# so the source fixture path is neither migrated_abs nor repo_dir and the first two rules
+# leave it alone — the golden then carries whatever directory that worktree happened to
+# occupy. Since a blind run is the only kind whose output can be trusted, that combination
+# was guaranteed to bite: blind-worktree.sh moves the run out of the checkout and this script
+# could only normalize paths inside it. Any absolute path ending at test/fixtures/ is the
+# source tree by definition, wherever it was checked out.
 while IFS= read -r f; do
   tmp="$f.freeze-tmp"
-  sed -e "s|$migrated_abs|<TARGET>|g" -e "s|$repo_dir|<REPO>|g" "$f" > "$tmp"
+  sed -e "s|$migrated_abs|<TARGET>|g" \
+      -e "s|$repo_dir|<REPO>|g" \
+      -e "s|[^\"\`[:space:]]*/test/fixtures/|<REPO>/test/fixtures/|g" "$f" > "$tmp"
   mv "$tmp" "$f"
 done < <(find "$dest/.migrate" -type f \( -name '*.json' -o -name '*.md' \))
 
