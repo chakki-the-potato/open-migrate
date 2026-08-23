@@ -9,7 +9,7 @@ migrated. Nothing is estimated.
 |---|---|---|---|---|
 | **Claude** | — | 56 | 55 | 63 |
 | **Codex** | 77 | — | 73 | 81 |
-| **Cursor** | 54 | 51 | — | 56 |
+| **Cursor** | 54 | 49 | — | 56 |
 | **Grok** | 56 | 53 | 55 | — |
 
 The numbers are how many checks that direction runs. All of them pass.
@@ -20,8 +20,8 @@ Project scope is verified separately at 36 checks.
 
 Three controls, all of which must keep failing:
 
-- An **empty target** fails 43 home-scope checks and 29 project-scope checks.
-- A **seeded target that was never migrated** fails 41 to 51 checks, depending on the tool, while
+- An **empty target** fails 41 home-scope checks and 29 project-scope checks.
+- A **seeded target that was never migrated** fails 41 to 56 checks, depending on the tool, while
   still passing the "existing content survived" checks. That combination is the point: if a seed
   passed everything, the suite would be asserting nothing about the migration itself. CI enforces
   it on every push.
