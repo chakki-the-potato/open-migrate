@@ -250,6 +250,22 @@ Do not rewrite the path. You cannot know whether the script is safe to relocate,
 
 Instead, **report every migrated hook whose command references the source tool's home**, quoting the path, and say plainly that the target now depends on it. The user decides whether to copy the script somewhere neutral and update the command. A hook pointing at a shared location outside both homes needs no mention.
 
+### An empty matcher is not a matcher
+
+A hook object may carry a `matcher` that selects which occurrences of the event it applies to — a
+tool-name pattern such as `Read` or `Edit|Write`. Some sources write the key with an empty string
+instead, on events where there is nothing to select.
+
+**Never carry an empty matcher into the target. Drop the key.** A source that writes `""` and a
+source that omits the key are saying the same thing, and writing both shapes makes the target file
+depend on which tool the hook came from — a property of the input that has nothing to do with the
+target's schema. Two people migrating the same hook into the same tool must get the same file.
+
+This is the one place a hook field is dropped rather than reported. It is not a loss: an empty
+matcher selects nothing, narrows nothing, and reading it back tells the user nothing they did not
+already know from the event name. Report a dropped field when the field carried something. This
+one did not.
+
 ### Global-rule merge format (applies to every target)
 
 Every target doc instructs you to write a `## Migrated from <source> (<date>)` section. The format is defined here, once.

@@ -16,7 +16,6 @@
     ],
     "Notification": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "echo notify" }
         ]
@@ -24,7 +23,6 @@
     ],
     "SessionStart": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "/Users/dev/.codex/hooks/notify.sh session-start" }
         ]
