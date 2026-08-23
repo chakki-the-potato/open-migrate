@@ -108,5 +108,12 @@ codex_toml_to_json "$codex_backup_config" > "$codex_backup_config_json" || print
 
 chk "backup of pre-existing AGENTS.md"   test -f "$codex_backup_agents"
 chk "backup AGENTS.md is the original"   grep -qF "Keep me." "$codex_backup_agents"
+# config.toml is only backed up when the run actually modified it. A Cursor source has no
+# env-injection surface and no Codex-expressible permission tokens beyond Shell, so a run from
+# that source can leave config.toml untouched — and procedure.md Step 4.1 says to back up
+# "every existing file you are about to modify", not every file that exists. Asserting the
+# backup unconditionally encoded a run that copied more than it needed to.
+if grep -q '"config.toml"' "${mig_dir}changes.json" 2>/dev/null; then
 chk "backup of pre-existing config.toml" test -f "$codex_backup_config"
 chk "backup config.toml is the original" jq -e '.model == "gpt-5.6-sol"' "$codex_backup_config_json"
+fi

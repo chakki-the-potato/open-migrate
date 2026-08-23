@@ -2,7 +2,7 @@
 
 Keep this project note.
 
-## Migrated from codex (2026-08-22)
+## Migrated from codex (2026-08-23)
 
 ### AGENTS.md
 

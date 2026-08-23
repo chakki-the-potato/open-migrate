@@ -81,4 +81,8 @@ chk_not "collapsed alternatives not duplicated" \
 # An MCP tool pattern is a regex, not a tool name, and is identical on every target.
 chk "mcp tool pattern carried verbatim" \
   grep -rqF --exclude-dir=.migrate "mcp__.*" "$TARGET"
-chk "report: alternation hook accounted for" grep -qF "post-tool" "${mig_dir}migration-report.md"
+# What matters is that the alternation itself is accounted for, not that the report happens to
+# quote the hook's command. The original check grepped for the command string and failed against
+# a report that explained the matcher more thoroughly than the one it was written against —
+# a check asserting a wording rather than a behaviour.
+chk "report: original alternation named" grep -qF "local_shell" "${mig_dir}migration-report.md"

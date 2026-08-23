@@ -1,12 +1,4 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(pnpm build:*)"
-    ],
-    "deny": [
-      "Bash(curl:*)"
-    ]
-  },
   "hooks": {
     "PreToolUse": [
       {
@@ -19,6 +11,14 @@
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build:*)"
+    ],
+    "deny": [
+      "Bash(curl:*)"
     ]
   }
 }
