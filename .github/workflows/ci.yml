@@ -140,9 +140,20 @@ jobs:
           # A pre-rename install must be removed, or it keeps answering to /migrate with a
           # copy that never receives updates.
           mkdir -p "$GROK_HOME/skills/migrate"
+          printf -- '---\nname: migrate\ndescription: Migrate settings between AI coding tools (Claude Code, Codex CLI, Cursor, Grok Build).\n---\n' \
+            > "$GROK_HOME/skills/migrate/SKILL.md"
           node bin/open-migrate.js grok > /dev/null
           if [ -d "$GROK_HOME/skills/migrate" ]; then
             echo "superseded /migrate install was not removed"; exit 1
+          fi
+
+          # A user's own skill that happens to be called "migrate" is not ours to delete.
+          mkdir -p "$GROK_HOME/skills/migrate"
+          printf -- '---\nname: migrate\ndescription: Run database migrations.\n---\n' \
+            > "$GROK_HOME/skills/migrate/SKILL.md"
+          node bin/open-migrate.js grok > /dev/null
+          if [ ! -f "$GROK_HOME/skills/migrate/SKILL.md" ]; then
+            echo "installer deleted an unrelated skill named migrate"; exit 1
           fi
 
           # An unknown tool name must fail rather than guessing.
@@ -164,6 +175,23 @@ jobs:
           fi
           grep -q "codex plugin remove" /tmp/uninstall.log || {
             echo "uninstall did not name the manager command for the plugin copy"; exit 1
+          }
+
+          # With only a plugin copy left, --all and the bare form must still point at it
+          # rather than claiming nothing is installed.
+          node bin/open-migrate.js --uninstall --all > /tmp/uninstall-all.log
+          grep -q "codex plugin remove" /tmp/uninstall-all.log || {
+            echo "uninstall --all missed a plugin-only install"; exit 1
+          }
+          node bin/open-migrate.js --uninstall > /tmp/uninstall-bare.log
+          grep -q "(plugin)" /tmp/uninstall-bare.log || {
+            echo "bare uninstall missed a plugin-only install"; exit 1
+          }
+
+          # Installing next to a plugin copy must warn that the command may load twice.
+          node bin/open-migrate.js codex > /tmp/install-dup.log
+          grep -q "codex plugin remove" /tmp/install-dup.log || {
+            echo "install did not warn about an existing plugin copy"; exit 1
           }
 
           # Uninstalling an unknown tool must fail, not silently do nothing.

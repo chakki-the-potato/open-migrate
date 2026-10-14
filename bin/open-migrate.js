@@ -52,6 +52,19 @@ function hasSkill(tool) {
   return fs.existsSync(skillDir(tool));
 }
 
+function hasAnyCopy(tool) {
+  return hasSkill(tool) || pluginCopies(tool).length > 0;
+}
+
+// "migrate" is a generic name a user's own skill may carry, so only a directory whose
+// SKILL.md matches the pre-rename open-migrate is treated as superseded.
+function isSupersededInstall(dir) {
+  const skill = path.join(dir, "SKILL.md");
+  if (!fs.existsSync(skill)) return false;
+  const text = fs.readFileSync(skill, "utf8");
+  return /^name:\s*migrate\s*$/m.test(text) && text.includes("Migrate settings between AI coding tools");
+}
+
 function install(tool) {
   const dest = skillDir(tool);
   fs.rmSync(dest, { recursive: true, force: true });
@@ -62,17 +75,22 @@ function install(tool) {
   // answering to /migrate with a copy that never receives updates.
   const superseded = path.join(tool.home(), "skills", "migrate");
   let removed = false;
-  if (fs.existsSync(superseded)) {
+  if (isSupersededInstall(superseded)) {
     fs.rmSync(superseded, { recursive: true, force: true });
     removed = true;
   }
-  return { dest, removed };
+  return { dest, removed, plugins: pluginCopies(tool) };
 }
 
 function report(tool, result) {
   console.log(`${c.g}✓${c.x} ${tool.label} ${c.d}${result.dest}${c.x}`);
   if (result.removed) {
     console.log(`  ${c.d}removed the superseded /migrate install${c.x}`);
+  }
+  for (const copy of result.plugins) {
+    console.log(`  ${c.y}!${c.x} a plugin copy is also installed ${c.d}${copy.dir}${c.x}`);
+    console.log(`    ${c.d}/open-migrate may now load twice — keep one, e.g. remove the plugin:${c.x}`);
+    console.log(`    ${c.b}${PLUGIN_MANAGER[tool.key]} open-migrate@${copy.market}${c.x}`);
   }
 }
 
@@ -176,7 +194,7 @@ the skill is gone you have to reinstall it to roll anything back.`);
     }
     targets = [tool];
   } else if (args.includes("--all")) {
-    targets = TOOLS.filter(hasSkill);
+    targets = TOOLS.filter(hasAnyCopy);
     if (!targets.length) {
       console.log(`\n${c.d}The skill is not installed in any of the four tool homes.${c.x}`);
       return;
@@ -184,14 +202,17 @@ the skill is gone you have to reinstall it to roll anything back.`);
   } else {
     // Nothing was named. There is no record of where a previous run installed to, so the
     // only honest options are to show what is there and let the caller say which.
-    const found = TOOLS.filter(hasSkill);
+    const found = TOOLS.filter(hasAnyCopy);
     console.log();
     if (!found.length) {
       console.log(`${c.d}The skill is not installed in any of the four tool homes.${c.x}`);
       return;
     }
     console.log(`${c.b}Installed in:${c.x}`);
-    found.forEach((t) => console.log(`  ${t.label} ${c.d}${skillDir(t)}${c.x}`));
+    found.forEach((t) => {
+      if (hasSkill(t)) console.log(`  ${t.label} ${c.d}${skillDir(t)}${c.x}`);
+      pluginCopies(t).forEach((copy) => console.log(`  ${t.label} ${c.d}${copy.dir} (plugin)${c.x}`));
+    });
     console.log(`
 ${c.d}Name which one, or remove them all:${c.x}
   ${c.b}npx open-migrate --uninstall ${found[0].key}${c.x}
